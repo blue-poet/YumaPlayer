@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import moe.rukamori.archivetune.ui.player.canvas.ui.VideoSessionHost
+import moe.rukamori.archivetune.ui.player.player_0.full.FullscreenVideoOverlay
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -58,142 +63,160 @@ internal fun UnifiedPlayerSheetLayers(
     val density = LocalDensity.current.density
     val canvasState = rememberPlayerCanvasState(state.trackUrl, state.title, state.artist)
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    alpha = expansionFractionProvider().coerceIn(0f, 1f)
-                }
-        ) {
-            PlayerBackgroundLayers(
-                state = state,
-                canvasState = canvasState,
-                expansionFractionProvider = expansionFractionProvider,
-                lyricsFractionProvider = lyricsFractionProvider,
-                queueFractionProvider = queueFractionProvider,
-                onColorsExtracted = { vibrant, darkMuted, gradient ->
-                    onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
-                },
-            )
+    var fullscreen by rememberSaveable { mutableStateOf(false) }
+    val videoPlaying by remember(state.isPlaying, fullscreen, expansionFractionProvider, lyricsFractionProvider, queueFractionProvider) {
+        derivedStateOf {
+            state.isPlaying && (fullscreen || (expansionFractionProvider() > 0.05f &&
+                lyricsFractionProvider() < 0.05f && queueFractionProvider() < 0.8f))
         }
-
-        val isMiniPlayerVisible by remember {
-            derivedStateOf { expansionFractionProvider() < 0.05f }
-        }
-
-        val showMiniPlayer by remember {
-            derivedStateOf { expansionFractionProvider() < 1f }
-        }
-
-        if (showMiniPlayer) {
+    }
+    VideoSessionHost(canvasState, videoPlaying, fullscreen, { fullscreen = it }) {
+        Box(modifier = modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val fraction = expansionFractionProvider()
-                        alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
+                        alpha = expansionFractionProvider().coerceIn(0f, 1f)
                     }
-                    .padding(horizontal = miniHorizontalInset)
             ) {
-                MiniPlayerContentInternal(
+                PlayerBackgroundLayers(
                     state = state,
+                    canvasState = canvasState,
                     expansionFractionProvider = expansionFractionProvider,
-                    playbackProgress = playbackProgress,
-                    onAction = onAction,
-                    onMediaAreaClick = onExpandClick,
-                    isVisible = isMiniPlayerVisible
+                    lyricsFractionProvider = lyricsFractionProvider,
+                    queueFractionProvider = queueFractionProvider,
+                    onColorsExtracted = { vibrant, darkMuted, gradient ->
+                        onAction(PlayerAction.UpdateColors(vibrant, darkMuted, gradient))
+                    },
                 )
             }
-        }
 
-        val hasTrack by remember(state.title) {
-            derivedStateOf { state.title.isNotEmpty() }
-        }
-
-        if (hasTrack) {
-            val isFullPlayerMounted by remember {
-                derivedStateOf { expansionFractionProvider() > 0.005f }
+            val isMiniPlayerVisible by remember {
+                derivedStateOf { expansionFractionProvider() < 0.05f }
             }
 
-            val isFullPlayerVisible by remember {
-                derivedStateOf {
-                    expansionFractionProvider() > 0.005f && maxOf(lyricsFractionProvider(), queueFractionProvider()) < 1f
-                }
+            val showMiniPlayer by remember {
+                derivedStateOf { expansionFractionProvider() < 1f }
             }
 
+            if (showMiniPlayer) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            val lyricsFraction = lyricsFractionProvider()
-                            val expansionFraction = expansionFractionProvider()
-
-                            alpha = expansionFraction.coerceIn(0f, 1f) *
-                                    (1f - lyricsFraction.coerceIn(0f, 1f))
-
-                            translationY = if (expansionFraction <= 0.005f) {
-                                10000f
-                            } else {
-                                (1f - expansionFraction) * (150f * density) -
-                                        (200f * density * lyricsFraction)
-                            }
+                            val fraction = expansionFractionProvider()
+                            alpha = (1f - (fraction / 0.3f)).coerceIn(0f, 1f)
                         }
+                        .padding(horizontal = miniHorizontalInset)
                 ) {
-                    FullPlayer(
+                    MiniPlayerContentInternal(
                         state = state,
-                        canvasState = canvasState,
+                        expansionFractionProvider = expansionFractionProvider,
                         playbackProgress = playbackProgress,
-                        updateState = updateState,
-                        slideOffset = expansionFractionProvider,
-                        onCollapseClick = onCollapseClick,
                         onAction = onAction,
-                        onSeek = onSeek,
-                        onBackgroundStyleChanged = onBackgroundStyleChanged,
-                        onOpenSettingsMenu = onOpenSettingsMenu,
-                        onOpenQueue = onOpenQueue,
-                        onSeekStarted = onSeekStarted,
+                        onMediaAreaClick = onExpandClick,
+                        isVisible = isMiniPlayerVisible
+                    )
+                }
+            }
+
+            val hasTrack by remember(state.title) {
+                derivedStateOf { state.title.isNotEmpty() }
+            }
+
+            if (hasTrack) {
+                val isFullPlayerMounted by remember {
+                    derivedStateOf { expansionFractionProvider() > 0.005f }
+                }
+
+                val isFullPlayerVisible by remember {
+                    derivedStateOf {
+                        expansionFractionProvider() > 0.005f && maxOf(lyricsFractionProvider(), queueFractionProvider()) < 1f
+                    }
+                }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                val lyricsFraction = lyricsFractionProvider()
+                                val expansionFraction = expansionFractionProvider()
+
+                                alpha = expansionFraction.coerceIn(0f, 1f) *
+                                        (1f - lyricsFraction.coerceIn(0f, 1f))
+
+                                translationY = if (expansionFraction <= 0.005f) {
+                                    10000f
+                                } else {
+                                    (1f - expansionFraction) * (150f * density) -
+                                            (200f * density * lyricsFraction)
+                                }
+                            }
+                    ) {
+                        FullPlayer(
+                            state = state,
+                            canvasState = canvasState,
+                            playbackProgress = playbackProgress,
+                            updateState = updateState,
+                            slideOffset = expansionFractionProvider,
+                            onCollapseClick = onCollapseClick,
+                            onAction = onAction,
+                            onSeek = onSeek,
+                            onBackgroundStyleChanged = onBackgroundStyleChanged,
+                            onOpenSettingsMenu = onOpenSettingsMenu,
+                            onOpenQueue = onOpenQueue,
+                            onSeekStarted = onSeekStarted,
+                            lyricsFractionProvider = lyricsFractionProvider,
+                            queueFractionProvider = queueFractionProvider,
+                            isVisible = isFullPlayerVisible
+                        )
+                    }
+
+
+                val isLyricsMounted by remember {
+                    derivedStateOf { lyricsFractionProvider() > 0.001f }
+                }
+
+                if (isLyricsMounted) {
+                    PlayerLyricsLayer(
+                        state = state,
                         lyricsFractionProvider = lyricsFractionProvider,
-                        queueFractionProvider = queueFractionProvider,
-                        isVisible = isFullPlayerVisible
+                        playbackProgress = playbackProgress,
+                        onAction = onAction,
+                        onCloseLyricsClick = onCloseLyricsClick,
+                        onMoreLyricsClick = onMoreLyricsClick,
+                        onSearchLyricsClick = onSearchLyricsClick,
+                        onSeek = onSeek,
+                        onSeekStarted = onSeekStarted,
+                        dragHandler = dragHandler,
                     )
                 }
 
+                val isQueueMounted by remember {
+                    derivedStateOf { queueFractionProvider() > 0.001f }
+                }
 
-            val isLyricsMounted by remember {
-                derivedStateOf { lyricsFractionProvider() > 0.001f }
+                if (isQueueMounted) {
+                    PlayerQueueLayer(
+                        state = state,
+                        queueState = queueState,
+                        queueFractionProvider = queueFractionProvider,
+                        onAction = onAction,
+                        onCloseQueueClick = onCloseQueueClick,
+                        onMoreQueueClick = onMoreQueueClick,
+                        dragHandler = dragHandler,
+                    )
+                }
             }
-
-            if (isLyricsMounted) {
-                PlayerLyricsLayer(
-                    state = state,
-                    lyricsFractionProvider = lyricsFractionProvider,
-                    playbackProgress = playbackProgress,
-                    onAction = onAction,
-                    onCloseLyricsClick = onCloseLyricsClick,
-                    onMoreLyricsClick = onMoreLyricsClick,
-                    onSearchLyricsClick = onSearchLyricsClick,
-                    onSeek = onSeek,
-                    onSeekStarted = onSeekStarted,
-                    dragHandler = dragHandler,
-                )
-            }
-
-            val isQueueMounted by remember {
-                derivedStateOf { queueFractionProvider() > 0.001f }
-            }
-
-            if (isQueueMounted) {
-                PlayerQueueLayer(
-                    state = state,
-                    queueState = queueState,
-                    queueFractionProvider = queueFractionProvider,
-                    onAction = onAction,
-                    onCloseQueueClick = onCloseQueueClick,
-                    onMoreQueueClick = onMoreQueueClick,
-                    dragHandler = dragHandler,
-                )
-            }
+        }
+        if (fullscreen) {
+            FullscreenVideoOverlay(
+                state = state,
+                canvas = canvasState,
+                playbackProgress = playbackProgress,
+                onAction = onAction,
+                onExit = { fullscreen = false },
+            )
         }
     }
 }

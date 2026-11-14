@@ -36,6 +36,7 @@ internal fun rememberCanvasPlaybackController(
     fallbackUrl: String?,
     isPlaying: Boolean,
     onReadyChange: (Boolean) -> Unit = {},
+    isMusicVideo: Boolean = false,
 ): CanvasPlaybackController {
     val currentOnReadyChange by rememberUpdatedState(onReadyChange)
     val context = LocalContext.current
@@ -155,6 +156,7 @@ internal fun rememberCanvasPlaybackController(
             fallback = fallback,
             isPlaying = isPlaying,
             isStarted = isStarted,
+            mimeTypeOverride = if (isMusicVideo) androidx.media3.common.MimeTypes.VIDEO_MP4 else null,
         )
     }
 

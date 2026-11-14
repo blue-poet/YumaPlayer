@@ -42,7 +42,7 @@ import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 
-enum class PlayerMenuScreen { SETTINGS, CUSTOMIZATION, SLEEP_TIMER, ABOUT, DETAILS, DOWNLOAD }
+enum class PlayerMenuScreen { SETTINGS, CUSTOMIZATION, ARTWORK, SLEEP_TIMER, ABOUT, DETAILS, DOWNLOAD }
 
 private val OptionsMenuMaxWidth = 560.dp
 private val MenuDismissThreshold = 64.dp
@@ -120,6 +120,7 @@ fun FullPlayerOptionsMenu(
             when {
                 currentScreen == PlayerMenuScreen.DETAILS ||
                 currentScreen == PlayerMenuScreen.CUSTOMIZATION ||
+                currentScreen == PlayerMenuScreen.ARTWORK ||
                 currentScreen == PlayerMenuScreen.SLEEP_TIMER ||
                 currentScreen == PlayerMenuScreen.DOWNLOAD ||
                 currentScreen == PlayerMenuScreen.ABOUT -> currentScreen = PlayerMenuScreen.SETTINGS
@@ -261,6 +262,7 @@ fun FullPlayerOptionsMenu(
                                                     updateState = updateState,
                                                     onNavigateToAbout = { currentScreen = PlayerMenuScreen.ABOUT },
                                                     onNavigateToCustomization = { currentScreen = PlayerMenuScreen.CUSTOMIZATION },
+                                                    onNavigateToArtwork = { currentScreen = PlayerMenuScreen.ARTWORK },
                                                     onNavigateToSleepTimer = { currentScreen = PlayerMenuScreen.SLEEP_TIMER },
                                                     onNavigateToDetails = { currentScreen = PlayerMenuScreen.DETAILS },
                                                     onNavigateToDownload = { currentScreen = PlayerMenuScreen.DOWNLOAD },
@@ -275,6 +277,13 @@ fun FullPlayerOptionsMenu(
                                             }
                                         }
 
+                                        PlayerMenuScreen.ARTWORK -> {
+                                            Column(
+                                                Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                                            ) {
+                                                PlayerArtworkMenuContent()
+                                            }
+                                        }
                                         PlayerMenuScreen.CUSTOMIZATION -> {
                                             Column(
                                                 modifier = Modifier

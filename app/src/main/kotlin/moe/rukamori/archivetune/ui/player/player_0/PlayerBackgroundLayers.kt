@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -246,6 +247,12 @@ fun PlayerBackgroundLayers(
                     .aspectRatio(0.75f)
                     .align(Alignment.TopCenter)
                     .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
+            )
+        }
+        if (state.isImmersiveEnabled) {
+            VideoCanvasStatus(
+                canvasState,
+                Modifier.align(Alignment.TopCenter).padding(top = 100.dp),
             )
         }
     }

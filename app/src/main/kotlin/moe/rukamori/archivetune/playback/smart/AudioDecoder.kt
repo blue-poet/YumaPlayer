@@ -296,6 +296,30 @@ object AudioDecoder {
         )
     }
 
+    /** A fixed sample rate, independent of DSP settings, for comparing two recordings. */
+    internal fun decodeForAlignment(
+        source: MediaDataSource,
+        checkCancellation: () -> Unit,
+    ): FloatArray? = decodeInternal(
+        setDataSource = { it.setDataSource(source) },
+        startMs = 0L,
+        endMs = MAX_HEAD_DECODE_MS,
+        forAlignment = true,
+        checkCancellation = checkCancellation,
+    )
+
+    private fun resampleForAlignment(samples: FloatArray, sourceRate: Double): FloatArray {
+        val ratio = sourceRate / TARGET_SAMPLE_RATE
+        val count = (samples.size / ratio).toInt()
+        return FloatArray(count) { index ->
+            val position = index * ratio
+            val left = position.toInt().coerceAtMost(samples.lastIndex)
+            val right = (left + 1).coerceAtMost(samples.lastIndex)
+            val fraction = (position - left).toFloat()
+            samples[left] + (samples[right] - samples[left]) * fraction
+        }
+    }
+
     private fun decodeInternal(
         setDataSource: (MediaExtractor) -> Unit,
         startMs: Long,
@@ -303,11 +327,14 @@ object AudioDecoder {
         maxWindowMs: Long = MAX_HEAD_DECODE_MS,
         watchdogMs: Long = DECODE_WATCHDOG_MS,
         decimateToTargetRate: Boolean = false,
+        forAlignment: Boolean = false,
+        checkCancellation: () -> Unit = {},
     ): FloatArray? {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
 
         return try {
+            checkCancellation()
             setDataSource(extractor)
 
             var audioTrackIndex = -1
@@ -359,7 +386,7 @@ object AudioDecoder {
 
             val decodeStartMs = android.os.SystemClock.elapsedRealtime()
 
-            if (mime.equals("audio/opus", ignoreCase = true)) {
+            if (mime.equals("audio/opus", ignoreCase = true) && !forAlignment) {
                 val kopusSamples = runCatching {
                     decodeOpusInternal(
                         extractor = extractor,
@@ -416,6 +443,7 @@ object AudioDecoder {
             var wallClockAborted = false
 
             while (!sawOutputEOS) {
+                checkCancellation()
                 if (android.os.SystemClock.elapsedRealtime() - decodeStartMs > watchdogMs) {
                     Timber.tag("AudioDecoder").w("Decode wall-clock guard tripped after ${watchdogMs}ms; stopping decode loop")
                     wallClockAborted = true
@@ -542,7 +570,8 @@ object AudioDecoder {
                 return decimated
             }
 
-            val targetRate = runCatching { TrackFeatures.sampleRate() }.getOrDefault(TARGET_SAMPLE_RATE)
+            val targetRate = if (forAlignment) TARGET_SAMPLE_RATE else
+                runCatching { TrackFeatures.sampleRate() }.getOrDefault(TARGET_SAMPLE_RATE)
             if (sampleRate.toDouble() == targetRate) {
                 val direct = monoSamples
                 monoSamples = null
@@ -552,7 +581,8 @@ object AudioDecoder {
             val source = monoSamples
             monoSamples = null
             val resampled = runCatching {
-                TrackFeatures.resample(source, sampleRate.toDouble(), targetRate)
+                if (forAlignment) resampleForAlignment(source, sampleRate.toDouble())
+                else TrackFeatures.resample(source, sampleRate.toDouble(), targetRate)
             }.getOrNull() ?: source
             Timber.tag("AudioDecoder").d("decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via $decoderName (mono, ${resampled.size} samples)")
             return resampled

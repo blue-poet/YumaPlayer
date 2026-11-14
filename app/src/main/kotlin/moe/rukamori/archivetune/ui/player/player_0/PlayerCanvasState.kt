@@ -7,6 +7,8 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import moe.rukamori.archivetune.ui.player.canvas.playback.MusicVideoAutoSync
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -18,10 +20,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.CanvasSource
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
-import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
+import moe.rukamori.archivetune.ui.player.PlayerArtworkMode
+import moe.rukamori.archivetune.ui.player.rememberPlayerArtworkMode
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
+import moe.rukamori.archivetune.ui.player.resolveMusicVideoCanvas
 import moe.rukamori.archivetune.utils.rememberPreference
 import timber.log.Timber
 
@@ -32,6 +36,49 @@ class PlayerCanvasState internal constructor(
 ) {
     var artwork by mutableStateOf(artwork)
         internal set
+
+    var isMusicVideo by mutableStateOf(false)
+        internal set
+
+    var isVideoLoading by mutableStateOf(false)
+        internal set
+
+    var isVideoUnavailable by mutableStateOf(false)
+        private set
+
+    var videoSyncOffsetMs by mutableStateOf<Long?>(null)
+        internal set
+
+    var isVideoSyncing by mutableStateOf(false)
+        internal set
+
+    var isVideoSyncUnavailable by mutableStateOf(false)
+        internal set
+
+    internal var retryGeneration by mutableStateOf(0)
+        private set
+
+    internal fun retryVideo() {
+        retryGeneration++
+    }
+
+    internal fun onVideoReady(ready: Boolean) {
+        if (isMusicVideo && !isVideoUnavailable) isVideoLoading = !ready
+    }
+
+    internal fun markVideoUnavailable() {
+        isVideoLoading = false
+        isVideoSyncing = false
+        isVideoUnavailable = true
+        artwork = null
+    }
+
+    internal fun beginVideoLookup() {
+        isVideoUnavailable = false
+        isVideoLoading = true
+        isVideoSyncUnavailable = false
+        videoSyncOffsetMs = null
+    }
 
     val primaryUrl: String?
         get() = artwork?.preferredAnimationUrl
@@ -49,10 +96,12 @@ fun rememberPlayerCanvasState(
     songTitle: String?,
     artistName: String?,
 ): PlayerCanvasState {
-    val (isCanvasEnabled) = rememberPreference(ArchiveTuneCanvasKey, defaultValue = false)
+    val context = LocalContext.current.applicationContext
+    val (artworkMode) = rememberPlayerArtworkMode()
+    val isCanvasEnabled = artworkMode != PlayerArtworkMode.ALBUM_ART
     val (canvasSourcePreference) = rememberPreference(CanvasSourceKey, defaultValue = CanvasSource.ALL.name)
     val canvasSource = remember(canvasSourcePreference) { CanvasSource.fromPreference(canvasSourcePreference) }
-    val canvasState = remember(mediaId, isCanvasEnabled, canvasSource) {
+    val canvasState = remember(mediaId, artworkMode, canvasSource) {
         PlayerCanvasState(isCanvasEnabled, null)
     }
 
@@ -60,7 +109,7 @@ fun rememberPlayerCanvasState(
     val currentTitle by rememberUpdatedState(songTitle)
     val currentArtist by rememberUpdatedState(artistName)
 
-    LaunchedEffect(isCanvasEnabled, canvasSource, mediaId, hasMetadata) {
+    LaunchedEffect(artworkMode, canvasSource, mediaId, songTitle, artistName, canvasState.retryGeneration) {
         Timber.tag("PlayerCanvas").d("Lookup trigger: isCanvasEnabled=$isCanvasEnabled, source=$canvasSource, mediaId=$mediaId, title=$currentTitle, artist=$currentArtist")
         if (!isCanvasEnabled) {
             canvasState.artwork = null
@@ -70,6 +119,27 @@ fun rememberPlayerCanvasState(
         if (mediaId.isNullOrBlank()) {
             canvasState.artwork = null
             Timber.tag("PlayerCanvas").d("mediaId is null or blank, skipping lookup")
+            return@LaunchedEffect
+        }
+        if (artworkMode == PlayerArtworkMode.MUSIC_VIDEO) {
+            canvasState.artwork = null
+            canvasState.isMusicVideo = true
+            canvasState.beginVideoLookup()
+            if (hasMetadata) {
+                val video = resolveMusicVideoCanvas(mediaId, currentTitle.orEmpty(), currentArtist.orEmpty())
+                canvasState.artwork = video?.artwork
+                if (video == null) {
+                    canvasState.markVideoUnavailable()
+                } else {
+                    canvasState.isVideoSyncing = true
+                    try {
+                        canvasState.videoSyncOffsetMs = MusicVideoAutoSync.measure(context, mediaId, video.videoId)
+                        canvasState.isVideoSyncUnavailable = canvasState.videoSyncOffsetMs == null
+                    } finally {
+                        canvasState.isVideoSyncing = false
+                    }
+                }
+            }
             return@LaunchedEffect
         }
         if (canvasState.artwork != null && canvasSource.accepts(canvasState.artwork?.source)) {

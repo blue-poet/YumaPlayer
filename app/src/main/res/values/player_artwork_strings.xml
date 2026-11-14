@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_artwork_mode">Player artwork</string>
+    <string name="player_artwork_album_art">Album art</string>
+    <string name="player_artwork_animated_canvas">Animated canvas</string>
+    <string name="player_artwork_music_video">Music video</string>
+    <string name="player_artwork_mode_description">Choose what appears in the player. Album art is shown when motion artwork is unavailable.</string>
+    <string name="player_video_loading">Loading music video…</string>
+    <string name="player_video_unavailable">Music video unavailable · Tap to retry</string>
+    <string name="player_video_syncing">Aligning video with song…</string>
+    <string name="player_video_sync_unavailable">Auto-sync unavailable · Tap to retry</string>
+    <string name="player_video_enter_fullscreen">Full screen video</string>
+    <string name="player_video_exit_fullscreen">Exit full screen</string>
+    <string name="player_video_pause">Pause</string>
+    <string name="player_video_seek">Seek song and video</string>
+    <string name="player_artwork_album_description">Static album artwork</string>
+    <string name="player_artwork_canvas_description">Animated artwork from your selected canvas source</string>
+    <string name="player_artwork_video_description">Music video synchronized with the song</string>
+</resources>

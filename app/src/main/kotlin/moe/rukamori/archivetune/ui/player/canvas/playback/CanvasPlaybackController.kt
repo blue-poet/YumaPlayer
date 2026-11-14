@@ -72,6 +72,7 @@ internal class CanvasPlaybackController(
         fallback: String?,
         isPlaying: Boolean,
         isStarted: Boolean,
+        mimeTypeOverride: String? = null,
     ) {
         val url = currentUrl ?: return
         val normalized = url.trim()
@@ -81,7 +82,7 @@ internal class CanvasPlaybackController(
         isVideoReady = false
         onReadyChange(false)
         val lowercaseUrl = normalized.lowercase(Locale.ROOT)
-        val mimeType =
+        val mimeType = mimeTypeOverride ?:
             when {
                 lowercaseUrl.contains("m3u8") -> MimeTypes.APPLICATION_M3U8
                 lowercaseUrl.contains("mp4") -> MimeTypes.VIDEO_MP4
@@ -96,6 +97,8 @@ internal class CanvasPlaybackController(
                 .Builder()
                 .setUri(normalized)
                 .setMimeType(mimeType)
+                // YouTube streams share /videoplayback; their query identifies the video.
+                .setCustomCacheKey(if (mimeTypeOverride != null) normalized else null)
                 .build()
 
         activePlayer.setMediaItem(mediaItem)

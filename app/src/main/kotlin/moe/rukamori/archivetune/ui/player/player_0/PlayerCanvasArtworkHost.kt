@@ -41,9 +41,15 @@ internal fun PlayerCanvasArtworkHost(
                 primaryUrl = canvasState.primaryUrl,
                 fallbackUrl = canvasState.fallbackUrl,
                 isPlaying = canPlayCanvas,
+                isMusicVideo = canvasState.isMusicVideo,
+                videoSyncOffsetMs = canvasState.videoSyncOffsetMs,
                 modifier = modifier,
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                onReadyChange = onReadyChange,
+                onReadyChange = {
+                    canvasState.onVideoReady(it)
+                    onReadyChange(it)
+                },
+                onPlaybackError = { if (canvasState.isMusicVideo) canvasState.markVideoUnavailable() },
             )
         }
     }

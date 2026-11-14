@@ -11,6 +11,10 @@ package moe.rukamori.archivetune.ui.player.canvas.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import moe.rukamori.archivetune.ui.player.canvas.playback.SynchronizeMusicVideo
+import androidx.media3.common.Player
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -28,16 +32,41 @@ internal fun CanvasArtworkPlayer(
     modifier: Modifier = Modifier,
     resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT,
     onReadyChange: (Boolean) -> Unit = {},
+    isMusicVideo: Boolean = false,
+    videoSyncOffsetMs: Long? = null,
+    onPlaybackError: () -> Unit = {},
+    isFullscreenSurface: Boolean = false,
 ) {
-    val controller =
+    val session = if (isMusicVideo) LocalVideoSession.current else null
+    if (session?.fullscreen == true && !isFullscreenSurface) return
+    val sharedController = session?.controller
+    val controller = sharedController ?:
         rememberCanvasPlaybackController(
             primaryUrl = primaryUrl,
             fallbackUrl = fallbackUrl,
             isPlaying = isPlaying,
             onReadyChange = onReadyChange,
+            isMusicVideo = isMusicVideo,
         )
 
+    val currentOnPlaybackError by rememberUpdatedState(onPlaybackError)
+    val currentOnReadyChange by rememberUpdatedState(onReadyChange)
+    LaunchedEffect(controller, controller.isVideoReady) {
+        if (sharedController != null) currentOnReadyChange(controller.isVideoReady)
+    }
+    LaunchedEffect(controller.hasFailed) {
+        if (sharedController == null && controller.hasFailed) currentOnPlaybackError()
+    }
     val player = controller.player ?: return
+
+    LaunchedEffect(player, isMusicVideo, sharedController) {
+        if (sharedController != null) return@LaunchedEffect
+        player.repeatMode = if (isMusicVideo) Player.REPEAT_MODE_OFF else Player.REPEAT_MODE_ONE
+        if (!isMusicVideo) player.setPlaybackSpeed(1f)
+    }
+    if (isMusicVideo && sharedController == null) {
+        SynchronizeMusicVideo(player, isPlaying, videoSyncOffsetMs)
+    }
 
     val alpha by animateFloatAsState(
         targetValue = if (controller.isVideoReady) 1f else 0f,

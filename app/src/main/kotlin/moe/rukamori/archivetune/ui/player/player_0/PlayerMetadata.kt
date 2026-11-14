@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.ui.res.stringResource
+import moe.rukamori.archivetune.ui.player.canvas.ui.LocalVideoSession
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -53,6 +57,8 @@ fun PlayerMetadata(
     likeFractionProvider: (() -> Float)? = null,
     likeEnabled: Boolean = true,
 ) {
+    val videoSession = LocalVideoSession.current
+    val showFullscreen = videoSession?.controller?.player != null
     val haptics = rememberYumaHaptics()
     val gradientEdgeColor = Color.Black
     Row(
@@ -208,19 +214,29 @@ fun PlayerMetadata(
                         val now = System.currentTimeMillis()
                         if (now - lastLikeClickTime > 450L) {
                             lastLikeClickTime = now
-                            onAction(PlayerAction.Like)
+                            if (showFullscreen) videoSession?.setFullscreen?.invoke(true)
+                            else onAction(PlayerAction.Like)
                         }
                     }
                 } else Modifier
             ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = if (state.isLiked) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline),
-                    contentDescription = null,
-                    tint = heartColor,
-                    modifier = Modifier.size(30.dp)
-                )
+                if (showFullscreen) {
+                    Icon(
+                        imageVector = Icons.Rounded.Fullscreen,
+                        contentDescription = stringResource(R.string.player_video_enter_fullscreen),
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp),
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(id = if (state.isLiked) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline),
+                        contentDescription = null,
+                        tint = heartColor,
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
             }
 
             if (state.isImmersiveEnabled) {

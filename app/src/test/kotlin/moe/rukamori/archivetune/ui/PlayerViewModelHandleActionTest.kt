@@ -149,16 +149,19 @@ class PlayerViewModelHandleActionTest {
         verify { viewModel["saveLyrics"]("new lyrics") }
 
         // Act & Assert: ApplyLyrics
-        viewModel.handleAction(PlayerAction.ApplyLyrics("song1", "test lyrics", "LRCLIB"))
-        verify { viewModel.applyLyrics("song1", "test lyrics", "LRCLIB") }
-
-        // Act & Assert: SearchSpecificProviderLyrics
-        viewModel.handleAction(PlayerAction.SearchSpecificProviderLyrics(moe.rukamori.archivetune.constants.PreferredLyricsProvider.LRCLIB))
-        verify { viewModel.fetchLyricsForProvider(moe.rukamori.archivetune.constants.PreferredLyricsProvider.LRCLIB) }
+        viewModel.handleAction(PlayerAction.ApplyLyrics("song1", "test lyrics"))
+        verify { viewModel.applyLyrics("song1", "test lyrics") }
 
         // Act & Assert: TranslateLyrics
         viewModel.handleAction(PlayerAction.TranslateLyrics("RU", false))
         verify { viewModel["translateLyrics"]("RU", false) }
+    }
+
+    @Test
+    fun `handleAction seeks the song and updates progress`() = runTest {
+        viewModel.handleAction(PlayerAction.SeekTo(42_000L))
+        verify { audioPlayer.seekTo(42_000L) }
+        assertEquals(42_000L, viewModel.playbackProgress.value)
     }
 
     @Test

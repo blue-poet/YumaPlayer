@@ -241,9 +241,16 @@ fun PlayerCoverCard(
                 primaryUrl = canvasState.primaryUrl,
                 fallbackUrl = canvasState.fallbackUrl,
                 isPlaying = isPlaying,
+                isMusicVideo = canvasState.isMusicVideo,
+                videoSyncOffsetMs = canvasState.videoSyncOffsetMs,
+                onReadyChange = canvasState::onVideoReady,
+                onPlaybackError = { if (canvasState.isMusicVideo) canvasState.markVideoUnavailable() },
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                 modifier = Modifier.fillMaxSize(),
             )
+        }
+        if (canvasHostEnabled) {
+            VideoCanvasStatus(canvasState, Modifier.align(Alignment.BottomCenter))
         }
     }
 }

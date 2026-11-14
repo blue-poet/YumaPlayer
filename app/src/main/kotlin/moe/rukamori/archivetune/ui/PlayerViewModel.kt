@@ -232,6 +232,7 @@ class PlayerViewModel @Inject constructor(
             is PlayerAction.Repeat -> playbackStateHolder.toggleRepeat()
             is PlayerAction.ToggleAutoDownload -> appearanceStateHolder.toggleAutoDownload()
             is PlayerAction.SearchLyrics -> refreshLyrics()
+            is PlayerAction.SeekTo -> seekTo(action.positionMs.coerceAtLeast(0L))
             is PlayerAction.ApplyLyrics -> applyLyrics(action.songId, action.lyrics)
             is PlayerAction.Lyrics -> setLyricsVisible(true)
             is PlayerAction.StartSleepTimer -> playbackStateHolder.startSleepTimer(action.minutes)

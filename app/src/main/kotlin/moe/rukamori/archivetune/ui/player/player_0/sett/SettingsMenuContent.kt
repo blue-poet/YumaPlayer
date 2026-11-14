@@ -40,6 +40,7 @@ fun SettingsMenuContent(
     updateState: UpdateState,
     onNavigateToAbout: () -> Unit,
     onNavigateToCustomization: () -> Unit,
+    onNavigateToArtwork: () -> Unit,
     onNavigateToSleepTimer: () -> Unit,
     onNavigateToDetails: () -> Unit,
     onNavigateToDownload: () -> Unit,
@@ -131,11 +132,15 @@ fun SettingsMenuContent(
         val castAction = rememberCastPlayerMenuAction()
         val hasCast = castAction != null
 
-        val totalRowCount = 8 +
+        val totalRowCount = 9 +
             (if (hasCast) 1 else 0) +
             (if (hasArtistId) 1 else 0) +
             (if (hasAlbumId) 1 else 0)
         var currentRow = 0
+
+        Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
+
+        PlayerArtworkModeMenuRow(index = currentRow++, count = totalRowCount, onClick = onNavigateToArtwork)
 
         Spacer(modifier = Modifier.height(SettingsDimensions.SegmentedItemGap))
 
