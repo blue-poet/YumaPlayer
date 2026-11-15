@@ -63,9 +63,11 @@ class PlayerConnection(
     val service = binder.service
     val player = service.player
     val localPlayer = service.localPlayer
-    private val mainExecutor = ContextCompat.getMainExecutor(context)
+    private val applicationContext = context.applicationContext
+    private val mainExecutor = ContextCompat.getMainExecutor(applicationContext)
     private val controllerFuture =
-        service.serviceSessionHolder.sessionToken?.let { token -> MediaController.Builder(context, token).buildAsync() }
+        service.serviceSessionHolder.sessionToken?.let { token -> MediaController.Builder(applicationContext, token).buildAsync() }
+    private var disposed = false
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)
@@ -435,6 +437,8 @@ class PlayerConnection(
     }
 
     fun dispose() {
+        if (disposed) return
+        disposed = true
         player.removeListener(this)
         controllerFuture?.let(MediaController::releaseFuture)
     }

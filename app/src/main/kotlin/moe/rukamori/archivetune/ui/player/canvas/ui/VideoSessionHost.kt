@@ -42,7 +42,7 @@ internal fun VideoSessionHost(
             if (controller.hasFailed) canvas.markVideoUnavailable()
         }
         controller.player?.let { player ->
-            SynchronizeMusicVideo(player, isPlaying, canvas.videoSyncOffsetMs)
+            SynchronizeMusicVideo(player, isPlaying, canvas.videoSyncOffsetMs, canvas.videoSkipSegments)
         }
     }
     CompositionLocalProvider(

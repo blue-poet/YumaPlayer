@@ -9,6 +9,8 @@ package moe.rukamori.archivetune.ui.player.player_0
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import moe.rukamori.archivetune.ui.player.canvas.playback.MusicVideoAutoSync
+import moe.rukamori.archivetune.ui.player.canvas.playback.rememberMusicVideoSkips
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -50,6 +52,8 @@ class PlayerCanvasState internal constructor(
     var isVideoUnavailable by mutableStateOf(false)
         private set
 
+    internal var videoSkipSegments by mutableStateOf<List<SponsorBlockSegment>>(emptyList())
+
     var videoSyncOffsetMs by mutableStateOf<Long?>(null)
         internal set
 
@@ -72,6 +76,7 @@ class PlayerCanvasState internal constructor(
 
     internal fun markVideoUnavailable() {
         resolvedVideoId = null
+        videoSkipSegments = emptyList()
         isVideoLoading = false
         isVideoSyncing = false
         isVideoUnavailable = true
@@ -80,6 +85,7 @@ class PlayerCanvasState internal constructor(
 
     internal fun beginVideoLookup() {
         resolvedVideoId = null
+        videoSkipSegments = emptyList()
         isVideoUnavailable = false
         isVideoLoading = true
         isVideoSyncUnavailable = false
@@ -112,6 +118,7 @@ fun rememberPlayerCanvasState(
         PlayerCanvasState(isCanvasEnabled, null)
     }
 
+    val videoSkips = rememberMusicVideoSkips(mediaId, canvasState.resolvedVideoId, canvasState.retryGeneration)
     val hasMetadata = hasCanvasMetadata(songTitle, artistName)
     val currentTitle by rememberUpdatedState(songTitle)
     val currentArtist by rememberUpdatedState(artistName)
@@ -179,15 +186,17 @@ fun rememberPlayerCanvasState(
         canvasState.artwork = resolved
     }
 
-    LaunchedEffect(canvasState, canvasState.resolvedVideoId, canvasState.retryGeneration) {
+    LaunchedEffect(canvasState, canvasState.resolvedVideoId, canvasState.retryGeneration, videoSkips) {
+        canvasState.videoSkipSegments = videoSkips.segments
         canvasState.videoSyncOffsetMs = null
         canvasState.isVideoSyncUnavailable = false
         canvasState.isVideoSyncing = false
         val videoId = canvasState.resolvedVideoId
         if (videoId == null || mediaId.isNullOrBlank()) return@LaunchedEffect
         canvasState.isVideoSyncing = true
+        if (videoSkips.loading) return@LaunchedEffect
         try {
-            canvasState.videoSyncOffsetMs = MusicVideoAutoSync.measure(context, mediaId, videoId)
+            canvasState.videoSyncOffsetMs = MusicVideoAutoSync.measure(context, mediaId, videoId, videoSkips.segments)
             canvasState.isVideoSyncUnavailable = canvasState.videoSyncOffsetMs == null
         } finally {
             if (isActive) canvasState.isVideoSyncing = false

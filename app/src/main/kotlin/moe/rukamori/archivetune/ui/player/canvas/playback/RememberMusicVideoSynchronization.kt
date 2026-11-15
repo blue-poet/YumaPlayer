@@ -11,12 +11,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 
 @Composable
-internal fun SynchronizeMusicVideo(video: Player, isPlaying: Boolean, offsetMs: Long?) {
+internal fun SynchronizeMusicVideo(video: Player, isPlaying: Boolean, offsetMs: Long?, skipSegments: List<SponsorBlockSegment> = emptyList()) {
     LaunchedEffect(video) {
         video.repeatMode = Player.REPEAT_MODE_OFF
     }
@@ -24,8 +25,8 @@ internal fun SynchronizeMusicVideo(video: Player, isPlaying: Boolean, offsetMs: 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lifecycleState by lifecycle.currentStateAsState()
     val playing by rememberUpdatedState(isPlaying)
-    val synchronizer = remember(video, song, offsetMs) {
-        MusicVideoSynchronizer(video, song, offsetMs ?: 0L)
+    val synchronizer = remember(video, song, offsetMs, skipSegments) {
+        MusicVideoSynchronizer(video, song, offsetMs ?: 0L, skipSegments = skipSegments)
     }
 
     DisposableEffect(song, synchronizer, lifecycle) {

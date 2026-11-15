@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberUpdatedState
 import moe.rukamori.archivetune.ui.player.canvas.playback.SynchronizeMusicVideo
 import androidx.media3.common.Player
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -34,6 +35,7 @@ internal fun CanvasArtworkPlayer(
     onReadyChange: (Boolean) -> Unit = {},
     isMusicVideo: Boolean = false,
     videoSyncOffsetMs: Long? = null,
+    videoSkipSegments: List<SponsorBlockSegment> = emptyList(),
     onPlaybackError: () -> Unit = {},
     isFullscreenSurface: Boolean = false,
 ) {
@@ -67,12 +69,12 @@ internal fun CanvasArtworkPlayer(
         }
     }
     if (isMusicVideo && sharedController == null) {
-        SynchronizeMusicVideo(player, isPlaying, videoSyncOffsetMs)
+        SynchronizeMusicVideo(player, isPlaying, videoSyncOffsetMs, videoSkipSegments)
     }
 
     val alpha by animateFloatAsState(
         targetValue = if (controller.isVideoReady) 1f else 0f,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = tween(durationMillis = 500),
         label = "canvasAlpha",
     )
 

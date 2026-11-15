@@ -6,6 +6,7 @@
 
 package moe.rukamori.archivetune.ui.player.player_0
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -203,7 +204,7 @@ fun PlayerBackgroundLayers(
             }
         }
 
-        var isCanvasReady by remember(state.trackUrl) { mutableStateOf(false) }
+        var isCanvasReady by remember(state.trackUrl, canvasState) { mutableStateOf(false) }
 
         val isCanvasActive by remember {
             derivedStateOf {
@@ -219,35 +220,51 @@ fun PlayerBackgroundLayers(
             }
         }
 
-        val painter = painters.currentClearPainter
-        if (painter != null && !(isCanvasActive && isCanvasReady)) {
-            Image(
-                painter = painter,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .align(Alignment.TopCenter)
-                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
-                contentScale = ContentScale.Crop,
-                alignment = Alignment.TopCenter
-            )
-        }
+        val albumArtAlpha by animateFloatAsState(
+            targetValue = if (isCanvasActive && isCanvasReady) 0f else 1f,
+            animationSpec = tween(500),
+            label = "backgroundAlbumArtAlpha",
+        )
+        // Mask the combined artwork once so its blend into the player background
+        // stays fixed while the album art and canvas crossfade inside it.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.75f)
+                .align(Alignment.TopCenter)
+                .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
+        ) {
+            val painter = painters.currentClearPainter
+            if (painter != null) {
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = albumArtAlpha },
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                )
+            }
 
-        if (isCanvasActive) {
-            PlayerCanvasArtworkHost(
-                state = state,
-                canvasState = canvasState,
-                immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
-                lyricsFractionProvider = lyricsFractionProvider,
-                queueFractionProvider = queueFractionProvider,
-                onReadyChange = { isCanvasReady = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .align(Alignment.TopCenter)
-                    .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade)
-            )
+            Crossfade(
+                targetState = canvasState.takeIf { isCanvasActive },
+                animationSpec = tween(500),
+                modifier = Modifier.fillMaxSize(),
+                label = "backgroundCanvasCrossfade",
+            ) { displayedCanvas ->
+                if (displayedCanvas != null) PlayerCanvasArtworkHost(
+                    state = state,
+                    canvasState = displayedCanvas,
+                    immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
+                    lyricsFractionProvider = lyricsFractionProvider,
+                    queueFractionProvider = queueFractionProvider,
+                    onReadyChange = {
+                        if (displayedCanvas === canvasState) isCanvasReady = it
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
         if (state.isImmersiveEnabled) {
             VideoCanvasStatus(

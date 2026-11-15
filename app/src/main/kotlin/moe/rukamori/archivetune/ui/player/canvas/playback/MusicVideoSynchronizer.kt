@@ -6,20 +6,23 @@ import android.os.SystemClock
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import kotlin.math.abs
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 
 /** The song is always the clock. This controller only changes the silent video player. */
 internal class MusicVideoSynchronizer(
     private val video: Player,
     private val song: Player,
     private val offsetMs: Long,
+    skipSegments: List<SponsorBlockSegment> = emptyList(),
     private val nowMs: () -> Long = { SystemClock.elapsedRealtime() },
 ) {
+    private val timeline = MusicVideoTimeline(skipSegments)
     private var initialSeek = true
     private var lastSeekMs = Long.MIN_VALUE
 
     fun sync(allowPlayback: Boolean, forceSeek: Boolean = false) {
         if (video.playbackState == Player.STATE_IDLE) return
-        val rawPosition = song.currentPosition.coerceAtLeast(0L) + offsetMs
+        val rawPosition = timeline.videoPositionAt(song.currentPosition.coerceAtLeast(0L) + offsetMs)
         val duration = video.duration
         val hasDuration = duration != C.TIME_UNSET && duration > 0
         val position = rawPosition.coerceAtLeast(0L).let {
@@ -33,7 +36,11 @@ internal class MusicVideoSynchronizer(
         val now = nowMs()
         val ready = video.playbackState == Player.STATE_READY
         val mayCorrect = ready && (lastSeekMs == Long.MIN_VALUE || now - lastSeekMs >= 1_500L)
-        if (initialSeek || forceSeek || (mayCorrect && abs(drift) > 1_000L)) {
+        val crossesCut = ready && insideVideo && (
+            timeline.isSkipped(video.currentPosition) ||
+                timeline.sectionAt(video.currentPosition) != timeline.sectionAt(position)
+            )
+        if (initialSeek || forceSeek || crossesCut || (mayCorrect && abs(drift) > 1_000L)) {
             video.seekTo(position)
             lastSeekMs = now
             initialSeek = false

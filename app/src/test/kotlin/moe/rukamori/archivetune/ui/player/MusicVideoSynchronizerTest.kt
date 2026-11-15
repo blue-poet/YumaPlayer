@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import moe.rukamori.archivetune.ui.player.canvas.playback.MusicVideoSynchronizer
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 import org.junit.Test
 
 class MusicVideoSynchronizerTest {
@@ -16,7 +17,7 @@ class MusicVideoSynchronizerTest {
     private var state = Player.STATE_READY
     private var now = 1_000L
 
-    private fun synchronizer(offset: Long = 6_000L): MusicVideoSynchronizer {
+    private fun synchronizer(offset: Long = 6_000L, segments: List<SponsorBlockSegment> = emptyList()): MusicVideoSynchronizer {
         every { song.currentPosition } answers { songPosition }
         every { song.playbackParameters } returns PlaybackParameters(1f)
         every { song.isPlaying } returns true
@@ -24,7 +25,59 @@ class MusicVideoSynchronizerTest {
         every { video.playbackState } answers { state }
         every { video.duration } returns 120_000L
         every { video.seekTo(any()) } answers { videoPosition = firstArg() }
-        return MusicVideoSynchronizer(video, song, offset) { now }
+        return MusicVideoSynchronizer(video, song, offset, skipSegments = segments) { now }
+    }
+
+    @Test fun skipsAnInsertedSceneImmediatelyAndDoesNotSeekBackIntoIt() {
+        songPosition = 9_900L
+        val sync = synchronizer(offset = 0, segments = listOf(SponsorBlockSegment(10_000, 25_000)))
+        sync.sync(true)
+        songPosition = 10_100L
+        videoPosition = 10_100L
+        now += 250L // A cut must bypass the normal drift correction cooldown.
+        sync.sync(true)
+        verify { video.seekTo(25_100L) }
+
+        songPosition = 11_000L
+        videoPosition = 26_000L
+        now += 250L
+        sync.sync(true)
+        verify(exactly = 2) { video.seekTo(any()) }
+        verify(exactly = 0) { song.seekTo(any()) }
+    }
+
+    @Test fun skipsShortClipEvenWhenDriftIsBelowNormalCorrectionThreshold() {
+        songPosition = 9_900L
+        val sync = synchronizer(offset = 0, segments = listOf(SponsorBlockSegment(10_000, 10_300)))
+        sync.sync(true)
+        songPosition = 10_100L
+        videoPosition = 10_100L
+        now += 250L
+        sync.sync(true)
+        verify { video.seekTo(10_400L) }
+        verify(exactly = 0) { song.seekTo(any()) }
+    }
+
+    @Test fun skippedOutroDoesNotCauseRepeatedSeeksAtClampedVideoEnd() {
+        songPosition = 200_000L
+        val sync = synchronizer(offset = 0, segments = listOf(SponsorBlockSegment(110_000, 120_000)))
+        repeat(4) {
+            sync.sync(true)
+            now += 250L
+        }
+        verify(exactly = 1) { video.seekTo(119_999L) }
+        verify { video.playWhenReady = false }
+    }
+
+    @Test fun seekingSongForwardAndBackwardUsesMappedPositions() {
+        val sync = synchronizer(offset = 0, segments = listOf(SponsorBlockSegment(10_000, 25_000)))
+        songPosition = 30_000L
+        sync.sync(true, forceSeek = true)
+        verify { video.seekTo(45_000L) }
+        songPosition = 5_000L
+        sync.sync(true, forceSeek = true)
+        verify { video.seekTo(5_000L) }
+        verify(exactly = 0) { song.seekTo(any()) }
     }
 
     @Test fun startsAtMeasuredOffsetAndNeverSeeksTheSong() {

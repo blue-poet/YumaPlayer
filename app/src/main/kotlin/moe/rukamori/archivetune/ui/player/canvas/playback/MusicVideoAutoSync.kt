@@ -4,6 +4,7 @@ package moe.rukamori.archivetune.ui.player.canvas.playback
 
 import android.content.Context
 import android.media.MediaDataSource
+import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -40,11 +41,12 @@ internal object MusicVideoAutoSync {
             .build()
     }
 
-    // Video time = song time + offset. Only confident measurements are saved.
-    suspend fun measure(context: Context, songId: String, videoId: String): Long? = withContext(Dispatchers.IO) {
+    // Music-only video time = song time + offset. The playback timeline restores skipped inserts.
+    suspend fun measure(context: Context, songId: String, videoId: String, skipSegments: List<SponsorBlockSegment> = emptyList()): Long? = withContext(Dispatchers.IO) {
         if (songId == videoId) return@withContext 0L
         val preferences = context.getSharedPreferences("music_video_alignment_v1", Context.MODE_PRIVATE)
-        val key = "$songId:$videoId"
+        val timeline = MusicVideoTimeline(skipSegments)
+        val key = musicVideoAlignmentCacheKey(songId, videoId, timeline.segments)
         if (preferences.contains(key)) return@withContext preferences.getLong(key, 0L)
         withTimeoutOrNull(60_000L) {
             measurementMutex.withLock {
@@ -59,7 +61,9 @@ internal object MusicVideoAutoSync {
                     val video = samples.second ?: return@withLock null
                     val match = withContext(Dispatchers.Default) {
                         val songEnvelope = MusicVideoAlignment.envelope(song, AudioDecoder.TARGET_SAMPLE_RATE)
-                        val videoEnvelope = MusicVideoAlignment.envelope(video, AudioDecoder.TARGET_SAMPLE_RATE)
+                        val videoEnvelope = timeline.musicOnlyEnvelope(
+                            MusicVideoAlignment.envelope(video, AudioDecoder.TARGET_SAMPLE_RATE),
+                        )
                         ensureActive()
                         MusicVideoAlignment.estimate(songEnvelope, videoEnvelope)
                     } ?: return@withLock null

@@ -141,6 +141,7 @@ internal fun FullscreenVideoOverlay(
                     isMusicVideo = true,
                     isFullscreenSurface = true,
                     videoSyncOffsetMs = canvas.videoSyncOffsetMs,
+                    videoSkipSegments = canvas.videoSkipSegments,
                     onReadyChange = canvas::onVideoReady,
                     onPlaybackError = canvas::markVideoUnavailable,
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT,

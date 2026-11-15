@@ -43,6 +43,7 @@ internal fun PlayerCanvasArtworkHost(
                 isPlaying = canPlayCanvas,
                 isMusicVideo = canvasState.isMusicVideo,
                 videoSyncOffsetMs = canvasState.videoSyncOffsetMs,
+                videoSkipSegments = canvasState.videoSkipSegments,
                 modifier = modifier,
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                 onReadyChange = {

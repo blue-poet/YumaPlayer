@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -236,15 +237,21 @@ fun PlayerCoverCard(
         }
 
         // Canvas
-        if (isCanvasActive) {
-            CanvasArtworkPlayer(
-                primaryUrl = canvasState.primaryUrl,
-                fallbackUrl = canvasState.fallbackUrl,
+        Crossfade(
+            targetState = canvasState.takeIf { isCanvasActive },
+            animationSpec = tween(500),
+            modifier = Modifier.fillMaxSize(),
+            label = "coverCanvasCrossfade",
+        ) { displayedCanvas ->
+            if (displayedCanvas != null) CanvasArtworkPlayer(
+                primaryUrl = displayedCanvas.primaryUrl,
+                fallbackUrl = displayedCanvas.fallbackUrl,
                 isPlaying = isPlaying,
-                isMusicVideo = canvasState.isMusicVideo,
-                videoSyncOffsetMs = canvasState.videoSyncOffsetMs,
-                onReadyChange = canvasState::onVideoReady,
-                onPlaybackError = { if (canvasState.isMusicVideo) canvasState.markVideoUnavailable() },
+                isMusicVideo = displayedCanvas.isMusicVideo,
+                videoSyncOffsetMs = displayedCanvas.videoSyncOffsetMs,
+                videoSkipSegments = displayedCanvas.videoSkipSegments,
+                onReadyChange = displayedCanvas::onVideoReady,
+                onPlaybackError = { if (displayedCanvas.isMusicVideo) displayedCanvas.markVideoUnavailable() },
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                 modifier = Modifier.fillMaxSize(),
             )

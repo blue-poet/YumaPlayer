@@ -38,7 +38,8 @@ class MusicServiceBinding(
                 }
                 isMusicServiceBound = true
                 if (service is MusicBinder) {
-                    val conn = PlayerConnection(activity, service, activity.database, activity.lifecycleScope)
+                    disposePlayerConnection()
+                    val conn = PlayerConnection(activity.applicationContext, service, activity.database, activity.lifecycleScope)
                     playerConnection = conn
                     activity.playerConnectionHolder.connection.value = conn
 
@@ -49,9 +50,8 @@ class MusicServiceBinding(
             override fun onServiceDisconnected(name: ComponentName?) {
                 isMusicServiceBound = false
                 intentRouter?.onServiceDisconnected()
-                playerConnection?.dispose()
+                disposePlayerConnection()
                 playerConnection = null
-                activity.playerConnectionHolder.connection.value = null
             }
         }
 
@@ -77,7 +77,16 @@ class MusicServiceBinding(
         }
     }
 
+    private fun disposePlayerConnection() {
+        val connection = playerConnection ?: return
+        connection.dispose()
+        val holder = activity.playerConnectionHolder.connection
+        if (holder.value === connection) holder.value = null
+    }
+
     fun onStop() {
+        // Explicit unbinding does not call onServiceDisconnected.
+        disposePlayerConnection()
         safeUnbindMusicService()
     }
 
@@ -93,7 +102,9 @@ class MusicServiceBinding(
             playerConnection?.service?.stopAndClearPlayback(clearPersistentState = true)
             safeUnbindMusicService()
             activity.stopService(Intent(activity, MusicService::class.java))
-            playerConnection = null
         }
+        disposePlayerConnection()
+        safeUnbindMusicService()
+        playerConnection = null
     }
 }
