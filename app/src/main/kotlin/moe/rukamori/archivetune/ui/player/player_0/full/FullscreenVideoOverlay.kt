@@ -1,3 +1,4 @@
+// Media3 ContentFrame and resize policies require this lint opt-in for the renderer adapter.
 @file:Suppress("UnstableApi")
 
 package moe.rukamori.archivetune.ui.player.player_0.full
@@ -19,11 +20,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.IconButton
+import moe.rukamori.archivetune.LocalAnimationsDisabled
+import moe.rukamori.archivetune.ui.settings.PlayerVideoTokens
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +39,6 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -57,20 +61,24 @@ internal fun FullscreenVideoOverlay(
     playbackProgress: StateFlow<Long>,
     onAction: (PlayerAction) -> Unit,
     onExit: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val animationsDisabled = LocalAnimationsDisabled.current
+    val controlsFadeMillis = if (animationsDisabled) 0 else PlayerVideoTokens.ControlsFadeMillis
     var controlsVisible by remember { mutableStateOf(true) }
+    var lyricsVisible by remember { mutableStateOf(true) }
     var interaction by remember { mutableIntStateOf(0) }
     var touching by remember { mutableStateOf(false) }
     var scrubbing by remember { mutableStateOf(false) }
     LaunchedEffect(controlsVisible, interaction, touching, scrubbing) {
         if (controlsVisible && !touching && !scrubbing) {
-            delay(3_000L)
+            delay(PlayerVideoTokens.ControlsTimeoutMillis)
             controlsVisible = false
         }
     }
     val captionBottom by animateDpAsState(
-        if (controlsVisible) 104.dp else 28.dp,
-        animationSpec = tween(180),
+        if (controlsVisible) PlayerVideoTokens.CaptionControlsBottom else PlayerVideoTokens.CaptionBottom,
+        animationSpec = tween(if (animationsDisabled) 0 else PlayerVideoTokens.CaptionOffsetMillis),
         label = "videoCaptionControlsOffset",
     )
     val currentOnAction by rememberUpdatedState(onAction)
@@ -91,7 +99,9 @@ internal fun FullscreenVideoOverlay(
                     hide(WindowInsetsCompat.Type.systemBars())
                 }
             }
-            onDispose { }
+            onDispose {
+                window?.let { WindowCompat.getInsetsController(it, view).show(WindowInsetsCompat.Type.systemBars()) }
+            }
         }
         DisposableEffect(window, state.isPlaying) {
             val wasAwake = ((window?.attributes?.flags ?: 0) and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0
@@ -99,7 +109,7 @@ internal fun FullscreenVideoOverlay(
             onDispose { if (!wasAwake) window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
         }
         BoxWithConstraints(
-            Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.displayCutout),
+            modifier.fillMaxSize().background(PlayerVideoTokens.Background).windowInsetsPadding(WindowInsets.displayCutout),
         ) {
             val turn = if (maxHeight > maxWidth) Modifier
                 .layout { measurable, constraints ->
@@ -147,20 +157,25 @@ internal fun FullscreenVideoOverlay(
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT,
                     modifier = Modifier.fillMaxSize(),
                 )
-                Box(
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(220.dp)
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)))),
-                )
-                VideoWordLyrics(
-                    state, playbackProgress,
-                    Modifier.align(Alignment.BottomStart).padding(start = 32.dp, end = 100.dp, bottom = captionBottom),
-                )
+                if (lyricsVisible) {
+                    VideoWordLyrics(
+                        state, playbackProgress,
+                        Modifier.align(Alignment.BottomStart).padding(start = PlayerVideoTokens.CaptionStartPadding, end = PlayerVideoTokens.CaptionEndPadding)
+                            .graphicsLayer { translationY = -captionBottom.toPx() },
+                        backdrop = {
+                            Box(
+                                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(PlayerVideoTokens.CaptionScrimHeight)
+                                    .background(Brush.verticalGradient(listOf(Color.Transparent, PlayerVideoTokens.CaptionScrim))),
+                            )
+                        },
+                    )
+                }
                 AnimatedVisibility(
                     visible = controlsVisible,
-                    enter = fadeIn(tween(150)),
-                    exit = fadeOut(tween(150)),
+                    enter = fadeIn(tween(controlsFadeMillis)),
+                    exit = fadeOut(tween(controlsFadeMillis)),
                     modifier = Modifier.align(Alignment.BottomStart)
-                        .fillMaxWidth().padding(start = 16.dp, end = 84.dp, bottom = 16.dp),
+                        .fillMaxWidth().padding(start = PlayerVideoTokens.SeekbarStartPadding, end = PlayerVideoTokens.SeekbarEndPadding, bottom = PlayerVideoTokens.SeekbarBottomPadding),
                 ) {
                     FullscreenVideoSeekbar(
                         state = state,
@@ -178,22 +193,44 @@ internal fun FullscreenVideoOverlay(
                 VideoCanvasStatus(canvas, Modifier.align(Alignment.Center))
                 AnimatedVisibility(
                     visible = controlsVisible,
-                    enter = fadeIn(tween(150)),
-                    exit = fadeOut(tween(150)),
+                    enter = fadeIn(tween(controlsFadeMillis)),
+                    exit = fadeOut(tween(controlsFadeMillis)),
                     modifier = Modifier.align(Alignment.TopEnd),
                 ) {
-                    IconButton(
-                        onClick = onExit,
-                        modifier = Modifier.padding(16.dp).size(48.dp)
-                            .background(Color.Black.copy(alpha = 0.6f), CircleShape),
+                    Row(
+                        modifier = Modifier.padding(PlayerVideoTokens.ControlPadding),
+                        horizontalArrangement = Arrangement.spacedBy(PlayerVideoTokens.ControlGap),
                     ) {
-                        Icon(Icons.Rounded.FullscreenExit, stringResource(R.string.player_video_exit_fullscreen), tint = Color.White)
+                        IconToggleButton(
+                            checked = lyricsVisible,
+                            onCheckedChange = {
+                                lyricsVisible = it
+                                interaction++
+                            },
+                            modifier = Modifier.size(PlayerVideoTokens.ControlSize),
+                        ) {
+                            Icon(
+                                Icons.Rounded.Subtitles,
+                                stringResource(
+                                    if (lyricsVisible) R.string.player_video_hide_lyrics
+                                    else R.string.player_video_show_lyrics,
+                                ),
+                                tint = if (lyricsVisible) PlayerVideoTokens.Foreground else PlayerVideoTokens.InactiveForeground,
+                            )
+                        }
+                        IconButton(
+                            onClick = onExit,
+                            modifier = Modifier.size(PlayerVideoTokens.ControlSize)
+                                .background(PlayerVideoTokens.ControlContainer, CircleShape),
+                        ) {
+                            Icon(Icons.Rounded.FullscreenExit, stringResource(R.string.player_video_exit_fullscreen), tint = PlayerVideoTokens.Foreground)
+                        }
                     }
                 }
                 AnimatedVisibility(
                     visible = controlsVisible,
-                    enter = fadeIn(tween(150)),
-                    exit = fadeOut(tween(150)),
+                    enter = fadeIn(tween(controlsFadeMillis)),
+                    exit = fadeOut(tween(controlsFadeMillis)),
                     modifier = Modifier.align(Alignment.BottomEnd),
                 ) {
                     IconButton(
@@ -201,13 +238,13 @@ internal fun FullscreenVideoOverlay(
                             interaction++
                             onAction(PlayerAction.PlayPause)
                         },
-                        modifier = Modifier.padding(20.dp).size(48.dp)
-                            .background(Color.Black.copy(alpha = 0.6f), CircleShape),
+                        modifier = Modifier.padding(PlayerVideoTokens.TransportPadding).size(PlayerVideoTokens.ControlSize)
+                            .background(PlayerVideoTokens.ControlContainer, CircleShape),
                     ) {
                         Icon(
                             if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             stringResource(if (state.isPlaying) R.string.player_video_pause else R.string.play),
-                            tint = Color.White,
+                            tint = PlayerVideoTokens.Foreground,
                         )
                     }
                 }

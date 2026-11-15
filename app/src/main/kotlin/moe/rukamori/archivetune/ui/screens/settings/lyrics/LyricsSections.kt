@@ -179,6 +179,8 @@ internal fun LyricsSettingsContent(
             onEnableUnisonLyricsChange = actions.onEnableUnisonLyricsChange,
             enableSimpMusicLyrics = state.enableSimpMusicLyrics,
             onEnableSimpMusicLyricsChange = actions.onEnableSimpMusicLyricsChange,
+            enableYouTubeAutoCaptions = state.enableYouTubeAutoCaptions,
+            onEnableYouTubeAutoCaptionsChange = actions.onEnableYouTubeAutoCaptionsChange,
             providerOrder = state.providerOrder,
             onOpenProviderOrderDialog = actions.onOpenProviderOrderDialog,
         )

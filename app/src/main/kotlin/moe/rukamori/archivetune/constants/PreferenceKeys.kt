@@ -170,6 +170,7 @@ val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
 val EnableYouLyPlusLyricsKey = booleanPreferencesKey("enableYouLyPlusLyrics")
 val EnableSimpMusicLyricsKey = booleanPreferencesKey("enableSimpMusicLyrics")
 val EnableUnisonLyricsKey = booleanPreferencesKey("enableUnisonLyrics")
+val EnableYouTubeAutoCaptionsKey = booleanPreferencesKey("enableYouTubeAutoCaptions")
 val HideExplicitKey = booleanPreferencesKey("hideExplicit")
 val HideVideoKey = booleanPreferencesKey("hideVideo")
 val AiContentFilterEnabledKey = booleanPreferencesKey("aiContentFilterEnabled")
@@ -534,6 +535,7 @@ enum class PreferredLyricsProvider {
     KUGOU,
     SIMPMUSIC,
     UNISON,
+    YOUTUBE_AUTO_CAPTIONS,
 }
 
 val DefaultLyricsProviderOrder =
@@ -544,6 +546,7 @@ val DefaultLyricsProviderOrder =
         PreferredLyricsProvider.KUGOU,
         PreferredLyricsProvider.SIMPMUSIC,
         PreferredLyricsProvider.UNISON,
+        PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS,
     )
 
 fun deserializeLyricsProviderOrder(orderStr: String?): List<PreferredLyricsProvider> {
@@ -570,7 +573,8 @@ fun deserializeLyricsProviderOrder(orderStr: String?): List<PreferredLyricsProvi
         }
 
     val missing = DefaultLyricsProviderOrder.filterNot { it in normalized }
-    return normalized + missing
+    return (normalized + missing).filterNot { it == PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS } +
+        PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS
 }
 
 enum class PlayerButtonsStyle {

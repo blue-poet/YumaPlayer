@@ -33,15 +33,8 @@ import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-internal fun isYouTubeMediaHost(host: String?): Boolean {
-    if (host.isNullOrBlank()) return false
-    val normalizedHost = host.lowercase(Locale.ROOT)
-    return normalizedHost == "googlevideo.com" || normalizedHost.endsWith(".googlevideo.com") ||
-        normalizedHost == "googleusercontent.com" || normalizedHost.endsWith(".googleusercontent.com") ||
-        normalizedHost == "youtube.com" || normalizedHost.endsWith(".youtube.com") ||
-        normalizedHost == "youtube-nocookie.com" || normalizedHost.endsWith(".youtube-nocookie.com") ||
-        normalizedHost == "ytimg.com" || normalizedHost.endsWith(".ytimg.com")
-}
+internal fun isYouTubeMediaHost(host: String?): Boolean =
+    moe.rukamori.archivetune.network.isYouTubeMediaHost(host)
 
 internal fun HttpUrl.isYouTubeMediaHost(): Boolean = isYouTubeMediaHost(host)
 

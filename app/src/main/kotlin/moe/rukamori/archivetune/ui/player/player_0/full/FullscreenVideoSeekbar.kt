@@ -14,15 +14,6 @@ internal fun videoSeekTarget(position: Float, durationMs: Long): Long? =
     if (!position.isFinite() || durationMs <= 0L) null
     else position.roundToLong().coerceIn(0L, durationMs)
 
-internal fun videoTimeLabel(positionMs: Long): String {
-    val seconds = positionMs.coerceAtLeast(0L) / 1000L
-    val hours = seconds / 3600L
-    val minutes = (seconds / 60L) % 60L
-    val remainder = seconds % 60L
-    return if (hours > 0L) "%d:%02d:%02d".format(hours, minutes, remainder)
-    else "%d:%02d".format(minutes, remainder)
-}
-
 @Composable
 internal fun FullscreenVideoSeekbar(
     state: PlayerUiState,

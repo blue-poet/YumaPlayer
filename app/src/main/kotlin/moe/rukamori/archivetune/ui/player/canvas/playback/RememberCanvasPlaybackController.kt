@@ -39,7 +39,7 @@ internal fun rememberCanvasPlaybackController(
     isMusicVideo: Boolean = false,
 ): CanvasPlaybackController {
     val currentOnReadyChange by rememberUpdatedState(onReadyChange)
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
     val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
     val isStarted = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
@@ -104,7 +104,7 @@ internal fun rememberCanvasPlaybackController(
             )
         }
 
-    controller.onReadyChange = currentOnReadyChange
+    SideEffect { controller.onReadyChange = currentOnReadyChange }
 
     LaunchedEffect(controller.isVideoReady) {
         currentOnReadyChange(controller.isVideoReady)

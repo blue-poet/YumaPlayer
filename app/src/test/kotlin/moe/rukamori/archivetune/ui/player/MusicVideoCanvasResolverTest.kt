@@ -11,6 +11,29 @@ class MusicVideoCanvasResolverTest {
     private fun video(title: String, artist: String = "Artist") =
         SongItem(id = "abcdefghijk", title = title, artists = listOf(Artist(artist, null)), thumbnail = "")
 
+    @Test fun currentMusicVideoBypassesSearch() {
+        org.junit.Assert.assertEquals(
+            "abcdefghijk", directMusicVideoCanvasId("abcdefghijk", true, null),
+        )
+    }
+
+    @Test fun audioTracksStillUseSearch() {
+        org.junit.Assert.assertNull(directMusicVideoCanvasId("abcdefghijk", false, null))
+    }
+
+    @Test fun manualChoiceOverridesCurrentMusicVideo() {
+        org.junit.Assert.assertEquals(
+            "manual12345", directMusicVideoCanvasId("abcdefghijk", true, "manual12345"),
+        )
+    }
+
+    @Test fun invalidChoiceFallsBackToCurrentVideoButLocalIdsDoNotBypassSearch() {
+        org.junit.Assert.assertEquals(
+            "abcdefghijk", directMusicVideoCanvasId("abcdefghijk", true, "invalid"),
+        )
+        org.junit.Assert.assertNull(directMusicVideoCanvasId("local:123", true, null))
+    }
+
     @Test fun manualChoiceOverridesSearchEvenWhenNotAnAutomaticMatch() {
         val searchResults = listOf(video("My Song (Official Video)"))
         val selected = musicVideoCandidates(searchResults, "My Song", "Artist", "manual12345")

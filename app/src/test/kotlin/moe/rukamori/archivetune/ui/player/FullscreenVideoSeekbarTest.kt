@@ -1,7 +1,6 @@
 package moe.rukamori.archivetune.ui.player
 
 import moe.rukamori.archivetune.ui.player.player_0.full.videoSeekTarget
-import moe.rukamori.archivetune.ui.player.player_0.full.videoTimeLabel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -20,9 +19,4 @@ class FullscreenVideoSeekbarTest {
         assertNull(videoSeekTarget(Float.POSITIVE_INFINITY, 120_000L))
     }
 
-    @Test fun timeLabelsIncludeHoursWhenNeeded() {
-        assertEquals("0:00", videoTimeLabel(-5L))
-        assertEquals("2:58", videoTimeLabel(178_000L))
-        assertEquals("1:02:03", videoTimeLabel(3_723_000L))
-    }
 }

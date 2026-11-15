@@ -19,6 +19,8 @@ import moe.rukamori.archivetune.lyrics.providers.LrcLibLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.SimpMusicLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.UnisonLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.YouLyPlusLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.YouTubeAutoCaptionsProvider
+import moe.rukamori.archivetune.constants.EnableYouTubeAutoCaptionsKey
 import moe.rukamori.archivetune.lyrics.providers.YouTubeLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.YouTubeSubtitleLyricsProvider
 import kotlinx.coroutines.CancellationException
@@ -98,6 +100,7 @@ class LyricsHelper
                 UnisonLyricsProvider,
                 YouTubeSubtitleLyricsProvider,
                 YouTubeLyricsProvider,
+                YouTubeAutoCaptionsProvider,
             )
 
         private val providerPreferenceKeys: Map<LyricsProvider, Preferences.Key<Boolean>> =
@@ -108,6 +111,7 @@ class LyricsHelper
                 KuGouLyricsProvider to EnableKugouKey,
                 SimpMusicLyricsProvider to EnableSimpMusicLyricsKey,
                 UnisonLyricsProvider to EnableUnisonLyricsKey,
+                YouTubeAutoCaptionsProvider to EnableYouTubeAutoCaptionsKey,
             )
 
         private val cacheLock = Any()
@@ -230,7 +234,7 @@ class LyricsHelper
                                 launch {
                                     providerPermits.withPermit {
                                         try {
-                                            val completed = withTimeoutOrNull(PROVIDER_TIMEOUT_MS) {
+                                            val completed = withTimeoutOrNull(provider.requestTimeoutMs) {
                                                 provider.getAllLyrics(
                                                     mediaId, songTitle, songArtists, songAlbum, duration,
                                                 ) { lyrics ->
@@ -285,6 +289,17 @@ class LyricsHelper
         }
 
         private suspend fun fetchPriorityLyrics(
+            providers: List<LyricsProvider>,
+            request: RequestKey,
+        ): String {
+            // ASR is a last resort, even when it provides timestamps and curated lyrics do not.
+            val regular = providers.filterNot { it == YouTubeAutoCaptionsProvider }
+            val lyrics = fetchRankedLyrics(regular, request)
+            if (lyrics != LYRICS_NOT_FOUND || YouTubeAutoCaptionsProvider !in providers) return lyrics
+            return fetchProviderLyrics(YouTubeAutoCaptionsProvider, request) ?: LYRICS_NOT_FOUND
+        }
+
+        private suspend fun fetchRankedLyrics(
             providers: List<LyricsProvider>,
             request: RequestKey,
         ): String = supervisorScope {
@@ -347,7 +362,7 @@ class LyricsHelper
             request: RequestKey,
         ): String? =
             try {
-                val result = withTimeoutOrNull(PROVIDER_TIMEOUT_MS) {
+                val result = withTimeoutOrNull(provider.requestTimeoutMs) {
                     provider.getLyrics(
                         request.mediaId, request.title, request.artists, request.album, request.duration,
                     ).also { currentCoroutineContext().ensureActive() }
@@ -408,10 +423,14 @@ class LyricsHelper
                     PreferredLyricsProvider.YOULY_PLUS to YouLyPlusLyricsProvider,
                     PreferredLyricsProvider.SIMPMUSIC to SimpMusicLyricsProvider,
                     PreferredLyricsProvider.UNISON to UnisonLyricsProvider,
+                    PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS to YouTubeAutoCaptionsProvider,
                 )
             val userOrdered = orderedEnums.mapNotNull { providerMap[it] }
             val rest = baseProviders.filterNot { it in userOrdered }
-            return (userOrdered + rest).distinct().filter { provider ->
+            val combined = (userOrdered + rest).distinct()
+            val fallbackLast = combined.filterNot { it == YouTubeAutoCaptionsProvider } +
+                combined.filter { it == YouTubeAutoCaptionsProvider }
+            return fallbackLast.filter { provider ->
                 providerPreferenceKeys[provider]?.let { preferences[it] } ?: true
             }
         }
@@ -467,7 +486,6 @@ class LyricsHelper
             private const val SINGLE_CACHE_BYTES = 4 * 1024 * 1024
             private const val MAX_CONCURRENT_PROVIDERS = 6
             private const val FETCH_TIMEOUT_MS = 12_000L
-            private const val PROVIDER_TIMEOUT_MS = 8_000L
             private const val QUALITY_GRACE_MS = 1_500L
             private const val PROVIDER_PRIORITY_GRACE_MS = 350L
             private const val SEARCH_CACHE_TTL_MS = 120_000L

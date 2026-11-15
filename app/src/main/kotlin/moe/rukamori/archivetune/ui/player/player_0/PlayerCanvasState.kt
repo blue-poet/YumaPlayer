@@ -6,10 +6,13 @@
 
 package moe.rukamori.archivetune.ui.player.player_0
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-import moe.rukamori.archivetune.ui.player.canvas.playback.MusicVideoAutoSync
-import moe.rukamori.archivetune.ui.player.canvas.playback.rememberMusicVideoSkips
+import moe.rukamori.archivetune.musicvideo.MusicVideoPlaybackRequest
+import moe.rukamori.archivetune.musicvideo.MusicVideoPlaybackState
+import moe.rukamori.archivetune.musicvideo.MusicVideoPlaybackStatus
+import moe.rukamori.archivetune.ui.player.canvas.playback.rememberMusicVideoPlayback
 import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -19,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.CanvasSource
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
@@ -28,7 +30,6 @@ import moe.rukamori.archivetune.ui.player.rememberPlayerArtworkMode
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
-import moe.rukamori.archivetune.ui.player.resolveMusicVideoCanvas
 import moe.rukamori.archivetune.ui.player.rememberMusicVideoChoice
 import moe.rukamori.archivetune.utils.rememberPreference
 import timber.log.Timber
@@ -46,8 +47,13 @@ class PlayerCanvasState internal constructor(
     var isMusicVideo by mutableStateOf(false)
         internal set
 
-    var isVideoLoading by mutableStateOf(false)
-        internal set
+    private var videoReady by mutableStateOf(false)
+    private var lookupLoading by mutableStateOf(false)
+    private var videoPlaybackFailed = false
+
+    val isVideoLoading: Boolean
+        get() = isMusicVideo && !isVideoUnavailable &&
+            (lookupLoading || (artwork != null && !videoReady))
 
     var isVideoUnavailable by mutableStateOf(false)
         private set
@@ -67,29 +73,38 @@ class PlayerCanvasState internal constructor(
         private set
 
     internal fun retryVideo() {
+        videoPlaybackFailed = false
         retryGeneration++
     }
 
     internal fun onVideoReady(ready: Boolean) {
-        if (isMusicVideo && !isVideoUnavailable) isVideoLoading = !ready
+        if (isMusicVideo && !isVideoUnavailable) videoReady = ready
     }
 
     internal fun markVideoUnavailable() {
+        videoPlaybackFailed = true
         resolvedVideoId = null
         videoSkipSegments = emptyList()
-        isVideoLoading = false
+        lookupLoading = false
         isVideoSyncing = false
         isVideoUnavailable = true
         artwork = null
     }
 
-    internal fun beginVideoLookup() {
-        resolvedVideoId = null
-        videoSkipSegments = emptyList()
-        isVideoUnavailable = false
-        isVideoLoading = true
-        isVideoSyncUnavailable = false
-        videoSyncOffsetMs = null
+    internal fun applyPlayback(playback: MusicVideoPlaybackState, request: MusicVideoPlaybackRequest) {
+        if (videoPlaybackFailed) return
+        isMusicVideo = true
+        lookupLoading = playback.status == MusicVideoPlaybackStatus.LOADING
+        isVideoUnavailable = playback.status == MusicVideoPlaybackStatus.UNAVAILABLE
+        isVideoSyncing = playback.aligning
+        isVideoSyncUnavailable = playback.alignmentUnavailable
+        videoSyncOffsetMs = playback.offsetMs
+        videoSkipSegments = playback.skipSegments
+        if (resolvedVideoId != playback.videoId || primaryUrl != playback.streamUrl) videoReady = false
+        resolvedVideoId = playback.videoId
+        artwork = playback.streamUrl?.let { url ->
+            CanvasArtwork(name = request.title, artist = request.artist, videoUrl = url)
+        }
     }
 
     val primaryUrl: String?
@@ -108,22 +123,31 @@ fun rememberPlayerCanvasState(
     songTitle: String?,
     artistName: String?,
 ): PlayerCanvasState {
-    val context = LocalContext.current.applicationContext
+    val metadata = LocalPlayerConnection.current?.mediaMetadata?.collectAsStateWithLifecycle()?.value
+    val currentTrackIsMusicVideo = metadata?.id == mediaId && metadata?.isMusicVideo == true
     val (artworkMode) = rememberPlayerArtworkMode()
     val (selectedVideoId) = rememberMusicVideoChoice(mediaId.orEmpty())
     val isCanvasEnabled = artworkMode != PlayerArtworkMode.ALBUM_ART
     val (canvasSourcePreference) = rememberPreference(CanvasSourceKey, defaultValue = CanvasSource.ALL.name)
     val canvasSource = remember(canvasSourcePreference) { CanvasSource.fromPreference(canvasSourcePreference) }
-    val canvasState = remember(mediaId, artworkMode, canvasSource, selectedVideoId) {
+    val canvasState = remember(mediaId, artworkMode, canvasSource, selectedVideoId, currentTrackIsMusicVideo) {
         PlayerCanvasState(isCanvasEnabled, null)
     }
 
-    val videoSkips = rememberMusicVideoSkips(mediaId, canvasState.resolvedVideoId, canvasState.retryGeneration)
+    if (artworkMode == PlayerArtworkMode.MUSIC_VIDEO) {
+        val request = MusicVideoPlaybackRequest(
+            mediaId.orEmpty(), songTitle.orEmpty(), artistName.orEmpty(),
+            selectedVideoId, currentTrackIsMusicVideo, canvasState.retryGeneration,
+        )
+        val playback = rememberMusicVideoPlayback(request)
+        LaunchedEffect(canvasState, playback, request) { canvasState.applyPlayback(playback, request) }
+    }
     val hasMetadata = hasCanvasMetadata(songTitle, artistName)
     val currentTitle by rememberUpdatedState(songTitle)
     val currentArtist by rememberUpdatedState(artistName)
 
-    LaunchedEffect(artworkMode, canvasSource, mediaId, songTitle, artistName, selectedVideoId, canvasState.retryGeneration) {
+    LaunchedEffect(artworkMode, canvasSource, mediaId, songTitle, artistName, selectedVideoId, currentTrackIsMusicVideo, canvasState.retryGeneration) {
+        if (artworkMode == PlayerArtworkMode.MUSIC_VIDEO) return@LaunchedEffect
         Timber.tag("PlayerCanvas").d("Lookup trigger: isCanvasEnabled=$isCanvasEnabled, source=$canvasSource, mediaId=$mediaId, title=$currentTitle, artist=$currentArtist")
         if (!isCanvasEnabled) {
             canvasState.artwork = null
@@ -135,21 +159,6 @@ fun rememberPlayerCanvasState(
             Timber.tag("PlayerCanvas").d("mediaId is null or blank, skipping lookup")
             return@LaunchedEffect
         }
-        if (artworkMode == PlayerArtworkMode.MUSIC_VIDEO) {
-            canvasState.artwork = null
-            canvasState.isMusicVideo = true
-            canvasState.beginVideoLookup()
-            if (hasMetadata) {
-                val video = resolveMusicVideoCanvas(mediaId, currentTitle.orEmpty(), currentArtist.orEmpty(), selectedVideoId)
-                canvasState.artwork = video?.artwork
-                if (video == null) {
-                    canvasState.markVideoUnavailable()
-                } else {
-                    canvasState.resolvedVideoId = video.videoId
-                }
-            }
-            return@LaunchedEffect
-        }
         if (canvasState.artwork != null && canvasSource.accepts(canvasState.artwork?.source)) {
             return@LaunchedEffect
         }
@@ -159,7 +168,7 @@ fun rememberPlayerCanvasState(
                 CanvasArtworkPlaybackCache.get(mediaId = mediaId, source = canvasSource)
             }
         if (cached != null) {
-            Timber.tag("PlayerCanvas").d("Cache hit for $mediaId: primaryUrl=${cached.preferredAnimationUrl}, fallbackUrl=${cached.videoUrl}")
+            Timber.tag("PlayerCanvas").d("Canvas cache hit for %s", mediaId)
             canvasState.artwork = cached
             return@LaunchedEffect
         }
@@ -182,25 +191,8 @@ fun rememberPlayerCanvasState(
                 allowNetwork = true,
                 source = canvasSource,
             )
-        Timber.tag("PlayerCanvas").i("Resolved result for $mediaId: ${if (resolved != null) "primaryUrl=${resolved.preferredAnimationUrl}, videoUrl=${resolved.videoUrl}" else "null"}")
+        Timber.tag("PlayerCanvas").i("Canvas lookup complete for %s: available=%s", mediaId, resolved != null)
         canvasState.artwork = resolved
-    }
-
-    LaunchedEffect(canvasState, canvasState.resolvedVideoId, canvasState.retryGeneration, videoSkips) {
-        canvasState.videoSkipSegments = videoSkips.segments
-        canvasState.videoSyncOffsetMs = null
-        canvasState.isVideoSyncUnavailable = false
-        canvasState.isVideoSyncing = false
-        val videoId = canvasState.resolvedVideoId
-        if (videoId == null || mediaId.isNullOrBlank()) return@LaunchedEffect
-        canvasState.isVideoSyncing = true
-        if (videoSkips.loading) return@LaunchedEffect
-        try {
-            canvasState.videoSyncOffsetMs = MusicVideoAutoSync.measure(context, mediaId, videoId, videoSkips.segments)
-            canvasState.isVideoSyncUnavailable = canvasState.videoSyncOffsetMs == null
-        } finally {
-            if (isActive) canvasState.isVideoSyncing = false
-        }
     }
 
     return canvasState

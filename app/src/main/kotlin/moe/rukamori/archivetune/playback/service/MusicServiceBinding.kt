@@ -33,10 +33,10 @@ class MusicServiceBinding(
     private val serviceConnection =
         object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                if (!isMusicServiceBound) return
                 if (moe.rukamori.archivetune.BuildConfig.DEBUG) {
                     moe.rukamori.archivetune.playback.PlaybackTiming.log("BINDER_CONNECTED")
                 }
-                isMusicServiceBound = true
                 if (service is MusicBinder) {
                     disposePlayerConnection()
                     val conn = PlayerConnection(activity.applicationContext, service, activity.database, activity.lifecycleScope)
@@ -48,7 +48,7 @@ class MusicServiceBinding(
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                isMusicServiceBound = false
+                // The binding remains registered until explicitly unbound, even after service death.
                 intentRouter?.onServiceDisconnected()
                 disposePlayerConnection()
                 playerConnection = null
@@ -56,6 +56,7 @@ class MusicServiceBinding(
         }
 
     fun onStart() {
+        if (isMusicServiceBound) return
         isMusicServiceBound =
             activity.bindService(
                 Intent(activity, MusicService::class.java),
@@ -67,13 +68,13 @@ class MusicServiceBinding(
 
     fun safeUnbindMusicService() {
         if (!isMusicServiceBound) return
+        isMusicServiceBound = false
         try {
             activity.unbindService(serviceConnection)
         } catch (e: IllegalArgumentException) {
+            reportException(e)
         } catch (e: Exception) {
             reportException(e)
-        } finally {
-            isMusicServiceBound = false
         }
     }
 

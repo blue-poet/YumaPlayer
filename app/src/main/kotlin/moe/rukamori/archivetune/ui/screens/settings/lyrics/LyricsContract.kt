@@ -64,6 +64,7 @@ internal fun PreferredLyricsProvider.displayName(): String =
         PreferredLyricsProvider.YOULY_PLUS -> "YouLyPlus"
         PreferredLyricsProvider.SIMPMUSIC -> "SimpMusic"
         PreferredLyricsProvider.UNISON -> "Unison"
+        PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS -> "YouTube Auto Captions"
     }
 
 @Immutable
@@ -79,6 +80,7 @@ data class LyricsSettingsUiState(
     val enableKugou: Boolean = true,
     val enableUnisonLyrics: Boolean = true,
     val enableSimpMusicLyrics: Boolean = true,
+    val enableYouTubeAutoCaptions: Boolean = true,
     val providerOrder: List<PreferredLyricsProvider> = emptyList(),
     val lyricsRomanizeJapanese: Boolean = true,
     val lyricsRomanizeKorean: Boolean = true,
@@ -108,6 +110,7 @@ data class LyricsSettingsUiActions(
     val onEnableKugouChange: (Boolean) -> Unit = {},
     val onEnableUnisonLyricsChange: (Boolean) -> Unit = {},
     val onEnableSimpMusicLyricsChange: (Boolean) -> Unit = {},
+    val onEnableYouTubeAutoCaptionsChange: (Boolean) -> Unit = {},
     val onOpenProviderOrderDialog: () -> Unit = {},
     val onLyricsRomanizeJapaneseChange: (Boolean) -> Unit = {},
     val onLyricsRomanizeKoreanChange: (Boolean) -> Unit = {},

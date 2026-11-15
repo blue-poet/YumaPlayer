@@ -1,5 +1,7 @@
 package moe.rukamori.archivetune.ui.player.player_0
 
+import moe.rukamori.archivetune.LocalAnimationsDisabled
+import moe.rukamori.archivetune.ui.settings.PlayerVideoTokens
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -15,7 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -65,6 +67,7 @@ fun PlayerCoverCard(
     onNext: () -> Unit = {},
     onPrevious: () -> Unit = {},
 ) {
+    val animationsDisabled = LocalAnimationsDisabled.current
     val context = LocalContext.current
     val shadowColor = MaterialTheme.colorScheme.scrim
     val surfaceColor: Color = MaterialTheme.colorScheme.surface
@@ -97,7 +100,7 @@ fun PlayerCoverCard(
     }
 
     val painter = rememberAsyncImagePainter(model = request)
-    val state by painter.state.collectAsState()
+    val state by painter.state.collectAsStateWithLifecycle()
 
     var previousPainter by remember { mutableStateOf<Painter?>(null) }
     var lastLoadedMediaId by remember { mutableStateOf(mediaId) }
@@ -239,7 +242,7 @@ fun PlayerCoverCard(
         // Canvas
         Crossfade(
             targetState = canvasState.takeIf { isCanvasActive },
-            animationSpec = tween(500),
+            animationSpec = tween(if (animationsDisabled) 0 else PlayerVideoTokens.ArtworkCrossfadeMillis),
             modifier = Modifier.fillMaxSize(),
             label = "coverCanvasCrossfade",
         ) { displayedCanvas ->

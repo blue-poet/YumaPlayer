@@ -1,3 +1,4 @@
+// The shared decoder session is an adapter around Media3 player/surface APIs.
 @file:Suppress("UnstableApi")
 
 package moe.rukamori.archivetune.ui.player.canvas.ui

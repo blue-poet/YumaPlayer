@@ -3,8 +3,10 @@ package moe.rukamori.archivetune.ui.player.player_0
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import moe.rukamori.archivetune.ui.settings.PlayerVideoTokens
+import moe.rukamori.archivetune.ui.settings.SettingsDimensions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,10 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 
 @Composable
@@ -32,7 +31,7 @@ internal fun VideoCanvasStatus(state: PlayerCanvasState, modifier: Modifier = Mo
     var expired by remember(state, label, state.retryGeneration) { mutableStateOf(false) }
     LaunchedEffect(state, label, state.retryGeneration) {
         if (label == R.string.player_video_sync_unavailable) {
-            delay(3_000L)
+            delay(PlayerVideoTokens.SyncStatusTimeoutMillis)
             expired = true
         }
     }
@@ -40,12 +39,12 @@ internal fun VideoCanvasStatus(state: PlayerCanvasState, modifier: Modifier = Mo
     val canRetry = state.isVideoUnavailable || state.isVideoSyncUnavailable
     Text(
         text = stringResource(label),
-        color = Color.White,
-        fontSize = 12.sp,
+        color = PlayerVideoTokens.Foreground,
+        style = MaterialTheme.typography.bodySmall,
         modifier = modifier
-            .padding(12.dp)
-            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+            .padding(SettingsDimensions.SectionSpacing)
+            .background(PlayerVideoTokens.StatusContainer, MaterialTheme.shapes.medium)
             .clickable(enabled = canRetry, onClick = state::retryVideo)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = PlayerVideoTokens.StatusPaddingHorizontal, vertical = PlayerVideoTokens.StatusPaddingVertical),
     )
 }

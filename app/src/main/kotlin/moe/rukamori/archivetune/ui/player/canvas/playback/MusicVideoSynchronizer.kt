@@ -1,3 +1,4 @@
+// This adapter follows the audio clock using Media3 player timing APIs.
 @file:Suppress("UnstableApi")
 
 package moe.rukamori.archivetune.ui.player.canvas.playback

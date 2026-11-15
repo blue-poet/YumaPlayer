@@ -20,18 +20,18 @@ import moe.rukamori.archivetune.ui.state.PlayerUiState
 internal fun PlayerCanvasArtworkHost(
     state: PlayerUiState,
     canvasState: PlayerCanvasState,
-    immersiveTransitionAlpha: Float,
+    immersiveTransitionAlphaProvider: () -> Float,
     lyricsFractionProvider: () -> Float,
     queueFractionProvider: () -> Float,
     modifier: Modifier = Modifier,
     onReadyChange: (Boolean) -> Unit = {},
 ) {
-    val canPlayCanvas by remember(state.isPlaying, state.isImmersiveEnabled, immersiveTransitionAlpha) {
+    val canPlayCanvas by remember(state.isPlaying, state.isImmersiveEnabled, immersiveTransitionAlphaProvider) {
         derivedStateOf {
             state.isPlaying &&
                 lyricsFractionProvider() < 0.05f &&
                 queueFractionProvider() <= 0.80f &&
-                    (state.isImmersiveEnabled && immersiveTransitionAlpha > 0.05f)
+                    (state.isImmersiveEnabled && immersiveTransitionAlphaProvider() > 0.05f)
         }
     }
 

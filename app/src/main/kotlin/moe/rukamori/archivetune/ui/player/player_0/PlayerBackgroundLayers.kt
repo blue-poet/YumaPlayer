@@ -6,6 +6,8 @@
 
 package moe.rukamori.archivetune.ui.player.player_0
 
+import moe.rukamori.archivetune.LocalAnimationsDisabled
+import moe.rukamori.archivetune.ui.settings.PlayerVideoTokens
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -60,6 +62,7 @@ fun PlayerBackgroundLayers(
     onColorsExtracted: (vibrant: Int, darkMuted: Int, gradient: Int) -> Unit = { _, _, _ -> },
 ) {
 
+    val animationsDisabled = LocalAnimationsDisabled.current
     val currentState by rememberUpdatedState(state)
     val currentCanvasState by rememberUpdatedState(canvasState)
     val currentExpansionProvider by rememberUpdatedState(expansionFractionProvider)
@@ -222,7 +225,7 @@ fun PlayerBackgroundLayers(
 
         val albumArtAlpha by animateFloatAsState(
             targetValue = if (isCanvasActive && isCanvasReady) 0f else 1f,
-            animationSpec = tween(500),
+            animationSpec = tween(if (animationsDisabled) 0 else PlayerVideoTokens.ArtworkCrossfadeMillis),
             label = "backgroundAlbumArtAlpha",
         )
         // Mask the combined artwork once so its blend into the player background
@@ -232,7 +235,7 @@ fun PlayerBackgroundLayers(
                 .fillMaxWidth()
                 .aspectRatio(0.75f)
                 .align(Alignment.TopCenter)
-                .artworkBottomFade(immersiveTransitionAlpha * queueArtworkFade),
+                .artworkBottomFade { immersiveTransitionAlpha * queueArtworkFade },
         ) {
             val painter = painters.currentClearPainter
             if (painter != null) {
@@ -249,14 +252,14 @@ fun PlayerBackgroundLayers(
 
             Crossfade(
                 targetState = canvasState.takeIf { isCanvasActive },
-                animationSpec = tween(500),
+                animationSpec = tween(if (animationsDisabled) 0 else PlayerVideoTokens.ArtworkCrossfadeMillis),
                 modifier = Modifier.fillMaxSize(),
                 label = "backgroundCanvasCrossfade",
             ) { displayedCanvas ->
                 if (displayedCanvas != null) PlayerCanvasArtworkHost(
                     state = state,
                     canvasState = displayedCanvas,
-                    immersiveTransitionAlpha = immersiveTransitionAlpha * queueArtworkFade,
+                    immersiveTransitionAlphaProvider = { immersiveTransitionAlpha * queueArtworkFade },
                     lyricsFractionProvider = lyricsFractionProvider,
                     queueFractionProvider = queueFractionProvider,
                     onReadyChange = {
@@ -275,10 +278,11 @@ fun PlayerBackgroundLayers(
     }
 }
 
-internal fun Modifier.artworkBottomFade(alpha: Float): Modifier = this
+internal fun Modifier.artworkBottomFade(alphaProvider: () -> Float): Modifier = this
     .graphicsLayer {
-        this.alpha = alpha
-        this.compositingStrategy = if (alpha > 0.01f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+        val opacity = alphaProvider()
+        this.alpha = opacity
+        this.compositingStrategy = if (opacity > 0.01f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
     }
     .drawWithCache {
         val maskBrush = Brush.verticalGradient(
@@ -290,7 +294,7 @@ internal fun Modifier.artworkBottomFade(alpha: Float): Modifier = this
             endY = size.height
         )
         onDrawWithContent {
-            if (alpha < 0.01f) return@onDrawWithContent
+            if (alphaProvider() < 0.01f) return@onDrawWithContent
             drawContent()
             drawRect(
                 brush = maskBrush,

@@ -3,6 +3,11 @@ package moe.rukamori.archivetune.playback.service
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.just
+import io.mockk.Runs
+import android.content.ServiceConnection
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.playback.host.PlayerConnectionHolder
@@ -20,6 +25,27 @@ class MusicServiceBindingLifecycleTest {
     private val binding = MusicServiceBinding(activity).also {
         it.playerConnection = connection
         holder.connection.value = connection
+    }
+
+    @Test fun serviceDeathStillUnbindsTheRegisteredConnectionOnStop() {
+        every { activity.unbindService(any()) } just Runs
+        val flag = MusicServiceBinding::class.java.getDeclaredField("isMusicServiceBound").apply { isAccessible = true }
+        flag.setBoolean(binding, true)
+        val callbackField = MusicServiceBinding::class.java.getDeclaredField("serviceConnection").apply { isAccessible = true }
+        val callback = requireNotNull(ServiceConnection::class.java.cast(callbackField.get(binding)))
+        callback.onServiceDisconnected(null)
+        assertTrue(binding.isMusicServiceBound)
+        binding.onStop()
+        assertFalse(binding.isMusicServiceBound)
+        verify(exactly = 1) { activity.unbindService(callback) }
+    }
+
+    @Test fun lateConnectionCallbackCannotRepublishAnUnboundConnection() {
+        val callbackField = MusicServiceBinding::class.java.getDeclaredField("serviceConnection").apply { isAccessible = true }
+        val callback = requireNotNull(ServiceConnection::class.java.cast(callbackField.get(binding)))
+        binding.onStop()
+        callback.onServiceConnected(null, null)
+        assertNull(holder.connection.value)
     }
 
     @Test fun stopDisposesConnectionWithoutWaitingForDisconnectCallback() {

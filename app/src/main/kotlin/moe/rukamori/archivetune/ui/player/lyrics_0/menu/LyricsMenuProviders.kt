@@ -18,7 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,7 +56,7 @@ internal fun LyricsMenuProviders(
 ) {
     val font = LocalArchiveTuneFontFamily.current
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
+    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
 
     val (currentProviderStr, setProviderStr) = rememberPreference(
         PreferredLyricsProviderKey,
@@ -78,7 +78,7 @@ internal fun LyricsMenuProviders(
 
     var providerStates by remember(songId) {
         mutableStateOf(
-            cachedStates ?: availableProviders.associateWith { CandidateState(isChecking = true) }
+            availableProviders.associateWith { cachedStates?.get(it) ?: CandidateState(isChecking = true) }
         )
     }
 
@@ -88,12 +88,13 @@ internal fun LyricsMenuProviders(
             return@LaunchedEffect
         }
 
-        val hasCompletedCache = cachedStates?.values?.none { it.isChecking } == true
+        val hasCompletedCache = availableProviders.all { cachedStates?.get(it)?.isChecking == false }
         if (hasCompletedCache) {
             return@LaunchedEffect
         }
 
         availableProviders.forEach { provider ->
+            if (cachedStates?.get(provider)?.isChecking == false) return@forEach
             launch(Dispatchers.IO) {
                 val newState = LyricsCandidatesManager.checkCandidate(
                     provider = provider,

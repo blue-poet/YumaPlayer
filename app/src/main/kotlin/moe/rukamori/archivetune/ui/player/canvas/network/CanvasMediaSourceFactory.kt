@@ -20,20 +20,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import moe.rukamori.archivetune.di.CanvasCache
-import moe.rukamori.archivetune.innertube.YouTube
-import moe.rukamori.archivetune.ui.player.isYouTubeMediaHost
-import moe.rukamori.archivetune.utils.StreamClientUtils
-import okhttp3.Credentials
 import okhttp3.OkHttpClient
-import java.io.IOException
-import java.net.Proxy
-import java.net.ProxySelector
-import java.net.SocketAddress
-import java.net.URI
-import java.util.concurrent.TimeUnit
-
-private const val CanvasPlaybackUserAgent =
-    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36"
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -51,61 +38,7 @@ internal fun resolveCanvasCache(context: Context): Cache? =
     }.getOrNull()
 
 internal fun createOkHttpClient(): OkHttpClient =
-    OkHttpClient
-        .Builder()
-        .dns(YouTube.dns)
-        .proxy(null)
-        .proxySelector(
-            object : ProxySelector() {
-                override fun select(uri: URI?): List<Proxy> {
-                    val isYouTube = isYouTubeMediaHost(uri?.host)
-                    val targetProxy = if (isYouTube) YouTube.streamOkHttpProxy else Proxy.NO_PROXY
-                    return listOf(targetProxy)
-                }
-
-                override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) {
-                }
-            },
-        )
-        .proxyAuthenticator { route, response ->
-            val host = route?.address?.url?.host ?: response.request.url.host
-            if (!isYouTubeMediaHost(host)) {
-                return@proxyAuthenticator null
-            }
-            val username = YouTube.proxyUsername
-            val password = YouTube.proxyPassword
-            if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
-                val credential = Credentials.basic(username, password)
-                response.request
-                    .newBuilder()
-                    .header("Proxy-Authorization", credential)
-                    .build()
-            } else {
-                null
-            }
-        }
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .addInterceptor { chain ->
-            val request = chain.request()
-            if (!isYouTubeMediaHost(request.url.host)) {
-                return@addInterceptor chain.proceed(
-                    request
-                        .newBuilder()
-                        .header("User-Agent", CanvasPlaybackUserAgent)
-                        .build(),
-                )
-            }
-
-            val requestProfile = StreamClientUtils.resolveRequestProfile(request.url)
-            chain.proceed(
-                StreamClientUtils
-                    .applyRequestProfile(
-                        request.newBuilder(),
-                        requestProfile,
-                    ).build(),
-            )
-        }.build()
+    moe.rukamori.archivetune.network.createMediaHttpClient()
 
 internal fun createCanvasMediaSourceFactory(
     context: Context,

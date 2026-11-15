@@ -18,6 +18,16 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
     @Binds
+    abstract fun bindMusicVideoPlaybackRepository(
+        impl: moe.rukamori.archivetune.musicvideo.data.MusicVideoPlaybackRepositoryImpl,
+    ): moe.rukamori.archivetune.musicvideo.MusicVideoPlaybackRepository
+
+    @Binds
+    abstract fun bindMusicVideoSearchRepository(
+        impl: moe.rukamori.archivetune.musicvideo.data.MusicVideoSearchRepositoryImpl,
+    ): moe.rukamori.archivetune.musicvideo.MusicVideoSearchRepository
+
+    @Binds
     @Singleton
     abstract fun bindSettingsRepository(
         impl: SettingsRepositoryImpl

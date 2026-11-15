@@ -52,7 +52,9 @@ internal fun LyricsProviderOrderDialog(
     onDismiss: () -> Unit,
     onConfirm: (List<PreferredLyricsProvider>) -> Unit,
 ) {
-    val providers = remember { mutableStateListOf(*initialOrder.toTypedArray()) }
+    val providers = remember {
+        mutableStateListOf(*initialOrder.filterNot { it == PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS }.toTypedArray())
+    }
     val lazyListState = rememberLazyListState()
     val reorderableState =
         rememberReorderableLazyListState(lazyListState) { from, to ->
@@ -161,6 +163,8 @@ internal fun LyricsProvidersSection(
     onEnableUnisonLyricsChange: (Boolean) -> Unit,
     enableSimpMusicLyrics: Boolean,
     onEnableSimpMusicLyricsChange: (Boolean) -> Unit,
+    enableYouTubeAutoCaptions: Boolean,
+    onEnableYouTubeAutoCaptionsChange: (Boolean) -> Unit,
     providerOrder: List<PreferredLyricsProvider>,
     onOpenProviderOrderDialog: () -> Unit,
 ) {
@@ -216,6 +220,15 @@ internal fun LyricsProvidersSection(
                 icon = { Icon(painterResource(R.drawable.lyrics), null) },
                 checked = enableSimpMusicLyrics,
                 onCheckedChange = onEnableSimpMusicLyricsChange,
+            )
+        }
+
+        item {
+            SwitchPreference(
+                title = { Text(stringResource(R.string.enable_youtube_auto_captions)) },
+                icon = { Icon(painterResource(R.drawable.lyrics), null) },
+                checked = enableYouTubeAutoCaptions,
+                onCheckedChange = onEnableYouTubeAutoCaptionsChange,
             )
         }
 

@@ -10,6 +10,8 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import kotlinx.coroutines.test.runTest
+import moe.rukamori.archivetune.constants.EnableYouTubeAutoCaptionsKey
+import moe.rukamori.archivetune.lyrics.providers.YouTubeAutoCaptionsProvider
 import moe.rukamori.archivetune.constants.LyricsProviderOrderKey
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.KuGouLyricsProvider
@@ -50,6 +52,17 @@ class LyricsHelperOrderTest {
     @After
     fun teardown() {
         unmockkAll()
+    }
+
+    @Test
+    fun autoCaptionsAreLastAfterExistingYouTubeProviders() = runTest {
+        assertEquals(YouTubeAutoCaptionsProvider, lyricsHelper.orderedProviders().last())
+    }
+
+    @Test
+    fun disablingAutoCaptionsRemovesAutomaticFallback() = runTest {
+        testDataStore.edit { it[EnableYouTubeAutoCaptionsKey] = false }
+        org.junit.Assert.assertFalse(YouTubeAutoCaptionsProvider in lyricsHelper.orderedProviders())
     }
 
     @Test

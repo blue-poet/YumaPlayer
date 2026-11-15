@@ -1,7 +1,9 @@
 package moe.rukamori.archivetune.ui.player.player_0.full
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import moe.rukamori.archivetune.ui.settings.PlayerVideoTokens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -13,11 +15,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextMotion
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
@@ -69,6 +68,7 @@ internal fun VideoWordLyrics(
     state: PlayerUiState,
     playbackProgress: StateFlow<Long>,
     modifier: Modifier = Modifier,
+    backdrop: @Composable () -> Unit = {},
 ) {
     val player = LocalPlayerConnection.current?.player
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
@@ -88,13 +88,14 @@ internal fun VideoWordLyrics(
     val clock = remember(position, offset) {
         { (position.longValue + offset.value).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt() }
     }
-    val textStyle = TextStyle(
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
+    val textStyle = MaterialTheme.typography.headlineSmall.copy(
+        fontSize = PlayerVideoTokens.CaptionSize,
+        lineHeight = PlayerVideoTokens.CaptionLineHeight,
         fontWeight = FontWeight.Bold,
         fontFamily = LocalArchiveTuneFontFamily.current,
         textMotion = TextMotion.Animated,
     )
+    if (entry != null) backdrop()
     // KaraokeLineText remembers glyph layouts internally; each new line needs its own composition.
     key(state.trackUrl, line, textStyle) {
         when (line) {
@@ -102,15 +103,15 @@ internal fun VideoWordLyrics(
                 line = line,
                 currentTimeProvider = clock,
                 normalLineTextStyle = textStyle,
-                accompanimentLineTextStyle = textStyle.copy(fontSize = 20.sp),
-                phoneticTextStyle = textStyle.copy(fontSize = 14.sp),
-                activeColor = Color.White,
+                accompanimentLineTextStyle = textStyle.copy(fontSize = PlayerVideoTokens.AccompanimentSize),
+                phoneticTextStyle = textStyle.copy(fontSize = PlayerVideoTokens.PhoneticSize),
+                activeColor = PlayerVideoTokens.Foreground,
                 blendMode = BlendMode.SrcOver,
                 showTranslation = false,
                 showPhonetic = false,
                 modifier = modifier.fillMaxWidth(),
             )
-            else -> entry?.let { Text(it.text, color = Color.White, style = textStyle, modifier = modifier.fillMaxWidth()) }
+            else -> entry?.let { Text(it.text, color = PlayerVideoTokens.Foreground, style = textStyle, modifier = modifier.fillMaxWidth()) }
         }
     }
 }

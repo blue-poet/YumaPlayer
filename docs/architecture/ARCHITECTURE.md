@@ -64,6 +64,19 @@ To keep the codebase maintainable as it grows, all modules and layers must stric
   - Queue management is decoupled into `QueuePlayOrchestrator`, `QueueMutationCommands`, and `TogetherGuestCoordinator`. Together room coordination behavior (`applyHostControl`, `applyHostAddTrack`, `buildTogetherRoomState`, `applyRemoteRoomState`) is encapsulated in `playback/together/ServiceTogetherCoordinator`.
   - External integrations are isolated in `playback/discord/` and `playback/history/`. `ServicePlaybackHistoryCoordinator` owns the service-local history session state and pending jobs; `PlaybackHistoryTracker` and `PlaybackHistoryStore` retain tracking and persistence behavior.
 
+#### Music video canvas
+
+Music video playback uses the colocated `musicvideo/` domain and its `data/` implementations inside `:app`; it adds no Gradle modules.
+
+- `MusicVideoSearchRepository` and `MusicVideoPlaybackRepository` define domain contracts. Their use cases return domain search items and playback state, not InnerTube DTOs.
+- `MusicVideoPickerViewModel` owns search, continuation state, cancellation and generation guards. Its coordinator collects lifecycle-aware state and passes domain items and actions to the picker.
+- `MusicVideoPlaybackViewModel` observes repository state only while a lifecycle subscriber exists. The repository resolves the selected video, observes SponsorBlock settings and measures/caches the alignment offset on I/O/CPU dispatchers.
+- Pure `MusicVideoTimeline` maps music time across non-music video inserts. The Media3 presentation synchronizer follows the song clock; it never changes song audio.
+- `PlayerCanvasState` is the presentation adapter for artwork and decoder readiness. A decoder failure is retained until retry, so a late alignment result cannot restore a failed video.
+- Audio seek/play actions retain the existing `PlayerAction` path and MediaController authority. A separate silent video decoder owns only the visual surface and follows that audio clock.
+- Media HTTP configuration is shared in `network/MediaHttpClientFactory.kt`. Alignment byte reads validate the complete HTTP range and declared length, bound downloads, and respect cancellation. Invalid offset cache entries are purged before retry.
+- The existing player resolver/alignment entry points delegate to the data/domain implementations, preserving their callers without duplicating algorithms.
+
 #### Spotify Queue Lazy Matching (forward + backward)
 
 `SpotifyTracksQueue`, `SpotifyLikedSongsQueue`, and `SpotifyPlaylistQueue` share `SpotifyLazyTrackMatcher` for resolving Spotify entries into Media3 items. Source adapters still own their transport (liked-tracks pages, playlist GraphQL pages, or a caller-provided custom order) and retain their public constructors.

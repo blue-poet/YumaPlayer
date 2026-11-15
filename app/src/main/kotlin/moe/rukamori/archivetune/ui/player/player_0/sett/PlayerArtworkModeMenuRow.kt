@@ -1,29 +1,25 @@
 package moe.rukamori.archivetune.ui.player.player_0.sett
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.player.PlayerArtworkMode
 import moe.rukamori.archivetune.ui.player.rememberPlayerArtworkMode
 import moe.rukamori.archivetune.ui.settings.SettingsDimensions
-import moe.rukamori.archivetune.ui.theme.LocalArchiveTuneFontFamily
 
 @Composable
-internal fun PlayerArtworkModeMenuRow(index: Int, count: Int, onClick: () -> Unit) {
+internal fun PlayerArtworkModeMenuRow(index: Int, count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val (mode) = rememberPlayerArtworkMode()
     CompactMenuRow(
+        modifier = modifier,
         title = stringResource(R.string.player_artwork_mode),
         subtitle = stringResource(mode.labelResource),
         iconResId = R.drawable.ic_palette,
@@ -35,16 +31,14 @@ internal fun PlayerArtworkModeMenuRow(index: Int, count: Int, onClick: () -> Uni
 }
 
 @Composable
-internal fun PlayerArtworkMenuContent(onChooseVideo: () -> Unit = {}, canChooseVideo: Boolean = false) {
+internal fun PlayerArtworkMenuContent(modifier: Modifier = Modifier, onChooseVideo: () -> Unit = {}, canChooseVideo: Boolean = false) {
     val (mode, setMode) = rememberPlayerArtworkMode()
-    Column(Modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth()) {
         Text(
             stringResource(R.string.player_artwork_mode),
-            color = Color.White,
-            fontSize = 19.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LocalArchiveTuneFontFamily.current,
-            modifier = Modifier.padding(start = 4.dp, bottom = 16.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = SettingsDimensions.BottomSheetTitleBottomPadding),
         )
         PlayerArtworkMode.entries.forEachIndexed { index, choice ->
             if (index > 0) Spacer(Modifier.height(SettingsDimensions.SegmentedItemGap))
@@ -59,11 +53,11 @@ internal fun PlayerArtworkMenuContent(onChooseVideo: () -> Unit = {}, canChooseV
                     selected = mode == choice
                     role = Role.RadioButton
                 },
-                trailingContent = { RadioButton(selected = mode == choice, onClick = null) },
+                trailingContent = { VideoSelectionIndicator(mode == choice) },
             )
         }
         if (canChooseVideo) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(SettingsDimensions.BottomSheetTitleBottomPadding))
             SettingsMenuRow(
                 title = stringResource(R.string.player_video_choose),
                 subtitle = stringResource(R.string.player_video_choose_description),

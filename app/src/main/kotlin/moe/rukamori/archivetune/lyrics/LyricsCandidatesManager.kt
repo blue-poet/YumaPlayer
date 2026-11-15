@@ -8,7 +8,9 @@ package moe.rukamori.archivetune.lyrics
 
 import androidx.collection.LruCache
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
+import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.constants.PreferredLyricsProvider
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.lyrics.parsing.LrcParser
@@ -17,6 +19,7 @@ import moe.rukamori.archivetune.lyrics.providers.KuGouLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.LrcLibLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.SimpMusicLyricsProvider
 import moe.rukamori.archivetune.lyrics.providers.UnisonLyricsProvider
+import moe.rukamori.archivetune.lyrics.providers.YouTubeAutoCaptionsProvider
 import moe.rukamori.archivetune.lyrics.providers.YouLyPlusLyricsProvider
 
 enum class LyricsSyncKind {
@@ -35,7 +38,11 @@ data class CandidateState(
 object LyricsCandidatesManager {
     private val cache = LruCache<String, Map<PreferredLyricsProvider, CandidateState>>(20)
 
-    fun getCached(songId: String): Map<PreferredLyricsProvider, CandidateState>? = cache[songId]
+    fun getCached(songId: String): Map<PreferredLyricsProvider, CandidateState>? =
+        cache[songId]?.filter { (provider, state) ->
+            // A blocked/empty caption response may work on the next attempt.
+            provider != PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS || state.lyrics != null
+        }
 
     fun updateCache(songId: String, provider: PreferredLyricsProvider, state: CandidateState) {
         synchronized(cache) {
@@ -53,6 +60,7 @@ object LyricsCandidatesManager {
             PreferredLyricsProvider.KUGOU -> KuGouLyricsProvider
             PreferredLyricsProvider.SIMPMUSIC -> SimpMusicLyricsProvider
             PreferredLyricsProvider.UNISON -> UnisonLyricsProvider
+            PreferredLyricsProvider.YOUTUBE_AUTO_CAPTIONS -> YouTubeAutoCaptionsProvider
         }
 
     suspend fun checkCandidate(
@@ -64,8 +72,8 @@ object LyricsCandidatesManager {
         duration: Int,
     ): CandidateState {
         val providerImpl = resolveProvider(provider)
-        val result = runCatching {
-            withTimeoutOrNull(7000L.milliseconds) {
+        val result = try {
+            withTimeoutOrNull(providerImpl.requestTimeoutMs.milliseconds) {
                 providerImpl.getLyrics(
                     id = songId,
                     title = title,
@@ -74,7 +82,12 @@ object LyricsCandidatesManager {
                     duration = duration,
                 ).getOrNull()
             }
-        }.getOrNull()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            reportException(error)
+            null
+        }
 
         val validLyrics = result?.takeIf {
             it.isNotBlank() && it != LyricsEntity.LYRICS_NOT_FOUND

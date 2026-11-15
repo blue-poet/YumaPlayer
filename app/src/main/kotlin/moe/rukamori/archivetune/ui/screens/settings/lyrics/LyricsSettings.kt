@@ -39,6 +39,7 @@ import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
 import moe.rukamori.archivetune.constants.EnableSimpMusicLyricsKey
+import moe.rukamori.archivetune.constants.EnableYouTubeAutoCaptionsKey
 import moe.rukamori.archivetune.constants.EnableUnisonLyricsKey
 import moe.rukamori.archivetune.constants.EnableYouLyPlusLyricsKey
 import moe.rukamori.archivetune.constants.LyricsClickKey
@@ -86,6 +87,8 @@ fun LyricsSettings(
         rememberPreference(key = EnableSimpMusicLyricsKey, defaultValue = true)
     val (enableUnisonLyrics, onEnableUnisonLyricsChange) =
         rememberPreference(key = EnableUnisonLyricsKey, defaultValue = true)
+    val (enableYouTubeAutoCaptions, onEnableYouTubeAutoCaptionsChange) =
+        rememberPreference(key = EnableYouTubeAutoCaptionsKey, defaultValue = true)
     val (providerOrderStr, onProviderOrderStrChange) =
         rememberPreference(
             key = LyricsProviderOrderKey,
@@ -176,6 +179,7 @@ fun LyricsSettings(
             enableKugou = enableKugou,
             enableUnisonLyrics = enableUnisonLyrics,
             enableSimpMusicLyrics = enableSimpMusicLyrics,
+            enableYouTubeAutoCaptions = enableYouTubeAutoCaptions,
             providerOrder = providerOrder,
             lyricsRomanizeJapanese = lyricsRomanizeJapanese,
             lyricsRomanizeKorean = lyricsRomanizeKorean,
@@ -203,6 +207,7 @@ fun LyricsSettings(
             onEnableKugouChange = onEnableKugouChange,
             onEnableUnisonLyricsChange = onEnableUnisonLyricsChange,
             onEnableSimpMusicLyricsChange = onEnableSimpMusicLyricsChange,
+            onEnableYouTubeAutoCaptionsChange = onEnableYouTubeAutoCaptionsChange,
             onOpenProviderOrderDialog = { showProviderOrderDialog = true },
             onLyricsRomanizeJapaneseChange = onLyricsRomanizeJapaneseChange,
             onLyricsRomanizeKoreanChange = onLyricsRomanizeKoreanChange,

@@ -136,7 +136,7 @@ fun rememberPreferenceIconShape(key: Any? = LocalPreferenceItemIndex.current): S
     }
 }
 
-private fun segmentedPreferenceItemShape(
+fun segmentedPreferenceItemShape(
     index: Int,
     count: Int,
 ): Shape {

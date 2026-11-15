@@ -6,7 +6,17 @@ This document provides standardized workflows for implementing common features, 
 
 ## 1. How to Add a New Lyrics Provider
 
-All lyrics provider implementations reside under the `:lyrics:*` submodule namespace (e.g., `:lyrics:lrclib`, `:lyrics:kugou`).
+Independent provider clients reside under the `:lyrics:*` submodule namespace (e.g., `:lyrics:lrclib`, `:lyrics:kugou`). Their app-facing `LyricsProvider` adapters live in `app/.../lyrics/providers/`. YouTube-backed adapters reuse the existing `:core:innertube` transport rather than introducing a second YouTube module.
+
+For an existing-backend adapter such as YouTube Auto Captions:
+- Register its adapter in `LyricsHelper`, `LyricsCandidatesManager`, provider preferences and the settings UI.
+- Append its `PreferredLyricsProvider` entry to preserve stored provider names and default ordering.
+- Treat speech-recognition captions as a final fallback, not a higher-quality replacement for curated lyrics.
+- Put blocking network operations on `Dispatchers.IO` and substantial JSON parsing on `Dispatchers.Default`; propagate cancellation through every adapter.
+- A provider-specific `requestTimeoutMs` applies consistently to background fetching and manual provider checks. Failed caption checks must remain retryable; signed URLs and proof tokens must not be logged or persisted.
+- Keep protocol parsing pure and cover caption timing, source-language selection and malformed responses with focused tests.
+
+For a new independently hosted provider, follow the module workflow below.
 
 1. **Create Submodule Directory:**
    Create a new module directory under `lyrics/<provider_name>/` containing a standard `build.gradle.kts` file that depends on `:core` shared contracts.

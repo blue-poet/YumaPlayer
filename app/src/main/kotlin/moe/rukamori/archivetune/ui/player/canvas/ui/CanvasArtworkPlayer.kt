@@ -18,7 +18,9 @@ import androidx.media3.common.Player
 import moe.rukamori.archivetune.sponsorblock.SponsorBlockSegment
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+import moe.rukamori.archivetune.LocalAnimationsDisabled
+import moe.rukamori.archivetune.ui.settings.PlayerVideoTokens
 import androidx.compose.ui.layout.ContentScale
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.compose.ContentFrame
@@ -39,6 +41,7 @@ internal fun CanvasArtworkPlayer(
     onPlaybackError: () -> Unit = {},
     isFullscreenSurface: Boolean = false,
 ) {
+    val animationsDisabled = LocalAnimationsDisabled.current
     val session = if (isMusicVideo) LocalVideoSession.current else null
     if (session?.fullscreen == true && !isFullscreenSurface) return
     val sharedController = session?.controller
@@ -74,7 +77,7 @@ internal fun CanvasArtworkPlayer(
 
     val alpha by animateFloatAsState(
         targetValue = if (controller.isVideoReady) 1f else 0f,
-        animationSpec = tween(durationMillis = 500),
+        animationSpec = tween(durationMillis = if (animationsDisabled) 0 else PlayerVideoTokens.ArtworkCrossfadeMillis),
         label = "canvasAlpha",
     )
 
@@ -84,7 +87,7 @@ internal fun CanvasArtworkPlayer(
         contentScale = resizeMode.toContentScale(),
         keepContentOnReset = false,
         shutter = {},
-        modifier = modifier.alpha(alpha),
+        modifier = modifier.graphicsLayer { this.alpha = alpha },
     )
 }
 

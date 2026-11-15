@@ -11,6 +11,8 @@ import android.content.Context
 interface LyricsProvider {
     val name: String
 
+    val requestTimeoutMs: Long get() = 8_000L
+
     fun isEnabled(context: Context): Boolean
 
     suspend fun getLyrics(

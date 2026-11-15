@@ -224,6 +224,16 @@ Dropdowns, context dialogs, and single-choice selectors follow **YDS 2.1 segment
 
 ---
 
+### 6.3 Video media overlays
+
+`PlayerVideoTokens` owns the fullscreen video surface, caption typography, control dimensions and artwork crossfade timing. These are semantic media-overlay tokens: the decoded video always sits on a dark backing regardless of the app theme, with white foreground controls and a grey inactive subtitle icon.
+
+- Fullscreen captions use the app font with 26sp text, 32sp line height and 18sp accompaniment text. Their visibility is local to the fullscreen session.
+- The caption readability scrim renders only when a caption line is actually present.
+- Artwork crossfades and fullscreen control fades respect `LocalAnimationsDisabled`.
+- Read animated opacity and caption offsets in the draw/placement phase rather than changing layout constraints on every frame.
+- Artwork/video selection uses the shared `segmentedPreferenceItemShape`, position-aware glass rows and a selected checkmark. Leaf rows receive data and actions, not network clients or ViewModels.
+
 ## 7. Component Checklist
 
 

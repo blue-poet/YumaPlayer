@@ -300,14 +300,17 @@ object AudioDecoder {
     internal fun decodeForAlignment(
         source: MediaDataSource,
         checkCancellation: () -> Unit,
-    ): FloatArray? = decodeInternal(
-        setDataSource = { it.setDataSource(source) },
-        startMs = 0L,
-        endMs = 80_000L,
-        maxWindowMs = 80_000L,
-        forAlignment = true,
-        checkCancellation = checkCancellation,
-    )
+    ): FloatArray? {
+        checkCancellation()
+        return decodeInternal(
+            setDataSource = { it.setDataSource(source) },
+            startMs = 0L,
+            endMs = 80_000L,
+            maxWindowMs = 80_000L,
+            forAlignment = true,
+            checkCancellation = checkCancellation,
+        )
+    }
 
     private fun resampleForAlignment(samples: FloatArray, sourceRate: Double): FloatArray {
         val ratio = sourceRate / TARGET_SAMPLE_RATE
@@ -587,6 +590,8 @@ object AudioDecoder {
             }.getOrNull() ?: source
             Timber.tag("AudioDecoder").d("decode ${android.os.SystemClock.elapsedRealtime() - decodeStartMs}ms via $decoderName (mono, ${resampled.size} samples)")
             return resampled
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Timber.tag("AudioDecoder").e(e, "Decode failed")
             null

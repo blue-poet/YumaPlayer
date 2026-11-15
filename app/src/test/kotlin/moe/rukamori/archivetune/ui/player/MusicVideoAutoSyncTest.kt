@@ -17,6 +17,27 @@ class MusicVideoAutoSyncTest {
         verify(exactly = 0) { context.getSharedPreferences(any(), any()) }
     }
 
+    @Test fun corruptCacheEntriesAreRemovedBeforeRecheckingTheSharedCache() = runTest {
+        val context = mockk<Context>()
+        val preferences = mockk<SharedPreferences>()
+        val editor = mockk<SharedPreferences.Editor>(relaxed = true)
+        var corrupt = true
+        every { context.getSharedPreferences("music_video_alignment_v1", Context.MODE_PRIVATE) } returns preferences
+        every { preferences.contains("song:video") } returns true
+        every { preferences.getLong("song:video", 0L) } answers {
+            if (corrupt) throw ClassCastException("old invalid cache value") else -1_000L
+        }
+        every { preferences.edit() } returns editor
+        every { editor.remove("song:video") } answers {
+            // Simulate a valid concurrent writer after the corrupt entry is purged.
+            corrupt = false
+            editor
+        }
+        assertEquals(-1_000L, MusicVideoAutoSync.measure(context, "song", "video"))
+        verify(exactly = 1) { editor.remove("song:video") }
+        verify(exactly = 1) { editor.apply() }
+    }
+
     @Test fun cachedNegativeOffsetIsRestoredWithoutFetchingAudio() = runTest {
         val context = mockk<Context>()
         val preferences = mockk<SharedPreferences>()
