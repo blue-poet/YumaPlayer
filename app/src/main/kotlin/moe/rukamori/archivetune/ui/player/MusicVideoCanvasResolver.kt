@@ -20,16 +20,20 @@ internal suspend fun resolveMusicVideoCanvas(
     mediaId: String,
     title: String,
     artist: String,
+    preferredVideoId: String? = null,
 ): ResolvedMusicVideoCanvas? = withContext(Dispatchers.IO) {
     if (!Regex("[A-Za-z0-9_-]{11}").matches(mediaId) || title.isBlank() || artist.isBlank()) {
         Timber.tag("PlayerCanvas").d("Music video lookup skipped: missing YouTube ID or metadata")
         return@withContext null
     }
     try {
-        val search = YouTube.search(query = "$title $artist", filter = SearchFilter.FILTER_VIDEO).getOrThrow()
-        val candidates = search.items.filterIsInstance<SongItem>()
-            .filter { matchesMusicVideoCanvas(it, title, artist) }
-            .take(3)
+        val searchItems = if (validMusicVideoChoice(preferredVideoId) != null) {
+            emptyList()
+        } else {
+            YouTube.search(query = "$title $artist", filter = SearchFilter.FILTER_VIDEO)
+                .getOrThrow().items.filterIsInstance<SongItem>()
+        }
+        val candidates = musicVideoCandidates(searchItems, title, artist, preferredVideoId)
         Timber.tag("PlayerCanvas").d("Music video lookup: %d matching candidates for %s", candidates.size, mediaId)
         val authState = YouTube.currentPlaybackAuthState()
         for (candidate in candidates) {
@@ -79,6 +83,20 @@ internal suspend fun resolveMusicVideoCanvas(
         Timber.tag("PlayerCanvas").w(error, "Music video canvas lookup failed")
         null
     }
+}
+
+internal fun musicVideoCandidates(
+    searchItems: List<SongItem>,
+    title: String,
+    artist: String,
+    preferredVideoId: String? = null,
+): List<SongItem> {
+    val chosen = validMusicVideoChoice(preferredVideoId)
+    if (chosen != null) {
+        // A manual pick must not be rejected or silently replaced by automatic matching.
+        return listOf(SongItem(id = chosen, title = title, artists = emptyList(), thumbnail = ""))
+    }
+    return searchItems.filter { matchesMusicVideoCanvas(it, title, artist) }.take(3)
 }
 
 internal fun matchesMusicVideoCanvas(candidate: SongItem, title: String, artist: String): Boolean {

@@ -16,4 +16,16 @@
     <string name="player_artwork_album_description">Static album artwork</string>
     <string name="player_artwork_canvas_description">Animated artwork from your selected canvas source</string>
     <string name="player_artwork_video_description">Music video synchronized with the song</string>
+    <string name="player_video_choose">Choose Music Video</string>
+    <string name="player_video_choose_description">Pick a different video for this song</string>
+    <string name="player_video_choose_about">Your choice is saved for this song. The song audio keeps playing.</string>
+    <string name="player_video_automatic">Automatic selection</string>
+    <string name="player_video_automatic_description">Use automatic video matching for this song</string>
+    <string name="player_video_search">Search videos</string>
+    <string name="player_video_searching">Searching for videos…</string>
+    <string name="player_video_search_empty">No videos found. Try a different search.</string>
+    <string name="player_video_search_error">Could not load videos. Please retry.</string>
+    <string name="player_video_retry">Retry</string>
+    <string name="player_video_more">Load more</string>
+    <string name="player_video_back">Back</string>
 </resources>

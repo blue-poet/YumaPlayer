@@ -10,10 +10,10 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 class MusicVideoAlignmentTest {
-    private fun recording(seed: Int = 7): FloatArray {
+    private fun recording(seed: Int = 7, durationMs: Int = 45_000): FloatArray {
         val random = Random(seed)
-        val amplitudes = FloatArray(450) { 0.1f + random.nextFloat() * 0.8f }
-        return FloatArray(45_000) { i ->
+        val amplitudes = FloatArray((durationMs + 99) / 100) { 0.1f + random.nextFloat() * 0.8f }
+        return FloatArray(durationMs) { i ->
             (sin(2 * PI * 100 * i / 1000) * amplitudes[i / 100]).toFloat()
         }
     }
@@ -26,6 +26,26 @@ class MusicVideoAlignmentTest {
         val result = MusicVideoAlignment.estimate(envelope(song), envelope(video))
         assertNotNull(result)
         assertEquals(5_000L, result!!.offsetMs)
+    }
+
+    @Test fun detectsFortySecondIntroFromOneMinuteSamples() {
+        val song = recording(durationMs = 60_000)
+        val video = FloatArray(song.size) { if (it >= 40_000) song[it - 40_000] * 0.5f else 0f }
+        val result = MusicVideoAlignment.estimate(envelope(song), envelope(video))
+        assertNotNull(result)
+        assertEquals(40_000L, result!!.offsetMs)
+    }
+
+    @Test fun detectsFullMinuteOffsetWithEightySecondSamplesInEitherDirection() {
+        val song = recording(durationMs = 80_000)
+        val video = FloatArray(song.size) { if (it >= 60_000) song[it - 60_000] * 0.5f else 0f }
+        val songEnvelope = envelope(song)
+        val videoEnvelope = envelope(video)
+        assertEquals(60_000L, MusicVideoAlignment.estimate(songEnvelope, videoEnvelope)!!.offsetMs)
+        assertEquals(-60_000L, MusicVideoAlignment.estimate(videoEnvelope, songEnvelope)!!.offsetMs)
+
+        val outsideLimit = FloatArray(song.size) { if (it >= 61_000) song[it - 61_000] else 0f }
+        assertNull(MusicVideoAlignment.estimate(songEnvelope, envelope(outsideLimit)))
     }
 
     @Test fun detectsSongIntroWithNegativeVideoOffset() {
@@ -69,7 +89,8 @@ class MusicVideoAlignmentTest {
 
     @Test fun peakOnSearchBoundaryIsRejected() {
         val song = envelope(recording())
-        val video = FloatArray(song.size) { if (it >= 1500) song[it - 1500] else 0f }
+        val boundary = song.size - 500 // Ten seconds of overlap defines the available sample edge.
+        val video = FloatArray(song.size) { if (it >= boundary) song[it - boundary] else 0f }
         assertNull(MusicVideoAlignment.estimate(song, video))
     }
 }

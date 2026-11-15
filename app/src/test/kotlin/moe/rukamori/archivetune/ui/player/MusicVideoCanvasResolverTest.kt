@@ -11,6 +11,29 @@ class MusicVideoCanvasResolverTest {
     private fun video(title: String, artist: String = "Artist") =
         SongItem(id = "abcdefghijk", title = title, artists = listOf(Artist(artist, null)), thumbnail = "")
 
+    @Test fun manualChoiceOverridesSearchEvenWhenNotAnAutomaticMatch() {
+        val searchResults = listOf(video("My Song (Official Video)"))
+        val selected = musicVideoCandidates(searchResults, "My Song", "Artist", "manual12345")
+        org.junit.Assert.assertEquals(listOf("manual12345"), selected.map { it.id })
+    }
+
+    @Test fun unavailableManualChoiceIsNotSilentlyReplacedWithAutomaticCandidate() {
+        val selected = musicVideoCandidates(emptyList(), "My Song", "Artist", "manual12345")
+        org.junit.Assert.assertEquals(listOf("manual12345"), selected.map { it.id })
+    }
+
+    @Test fun clearingManualChoiceRestoresOriginalAutomaticSearchOrderAndLimit() {
+        val videos = (1..4).map { index -> video("My Song (Official Video)").copy(id = "result0000$index") }
+        org.junit.Assert.assertEquals(
+            videos.take(3),
+            musicVideoCandidates(videos, "My Song", "Artist", ""),
+        )
+        org.junit.Assert.assertEquals(
+            videos.take(3),
+            musicVideoCandidates(videos, "My Song", "Artist", "invalid"),
+        )
+    }
+
     @Test fun acceptsMatchingOfficialVideo() {
         assertTrue(matchesMusicVideoCanvas(video("Artist - My Song (Official Music Video)"), "My Song", "Artist"))
     }

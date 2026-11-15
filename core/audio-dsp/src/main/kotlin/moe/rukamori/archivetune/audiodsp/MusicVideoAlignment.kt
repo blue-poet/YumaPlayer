@@ -10,7 +10,9 @@ import kotlin.math.sqrt
 object MusicVideoAlignment {
     const val HOP_MS = 20
     private const val MIN_OVERLAP_FRAMES = 500 // Ten seconds, to reject coincidental short matches.
-    private const val MAX_LAG_FRAMES = 1_500 // Thirty seconds of intro or different edits.
+    private const val MAX_LAG_FRAMES = 3_000 // One minute of intro or different edits.
+
+    private const val PEAK_GUARD_FRAMES = 10 // Verify peaks just beyond the allowed offset before accepting an edge match.
 
     data class Match(val offsetMs: Long, val confidence: Double)
 
@@ -35,8 +37,8 @@ object MusicVideoAlignment {
     /** Normalized correlation tolerates different mastering levels; overlap weighting rejects repeats. */
     fun estimate(song: FloatArray, video: FloatArray): Match? {
         if (min(song.size, video.size) < MIN_OVERLAP_FRAMES) return null
-        val lower = max(-MAX_LAG_FRAMES, MIN_OVERLAP_FRAMES - song.size)
-        val upper = min(MAX_LAG_FRAMES, video.size - MIN_OVERLAP_FRAMES)
+        val lower = max(-MAX_LAG_FRAMES - PEAK_GUARD_FRAMES, MIN_OVERLAP_FRAMES - song.size)
+        val upper = min(MAX_LAG_FRAMES + PEAK_GUARD_FRAMES, video.size - MIN_OVERLAP_FRAMES)
         if (lower >= upper) return null
         val scores = DoubleArray(upper - lower + 1) { Double.NEGATIVE_INFINITY }
         var bestLag = 0
@@ -75,7 +77,7 @@ object MusicVideoAlignment {
             }
         }
         // A peak at the searched edge is not evidence that the true offset is inside the window.
-        if (bestLag == lower || bestLag == upper || bestConfidence < 0.65) return null
+        if (bestLag == lower || bestLag == upper || abs(bestLag) > MAX_LAG_FRAMES || bestConfidence < 0.65) return null
         val competitor = (lower..upper)
             .filter { abs(it - bestLag) > 10 }
             .maxOfOrNull { scores[it - lower] } ?: Double.NEGATIVE_INFINITY

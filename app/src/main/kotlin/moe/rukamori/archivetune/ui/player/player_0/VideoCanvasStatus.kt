@@ -6,6 +6,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -23,6 +29,14 @@ internal fun VideoCanvasStatus(state: PlayerCanvasState, modifier: Modifier = Mo
         state.isVideoSyncUnavailable -> R.string.player_video_sync_unavailable
         else -> return
     }
+    var expired by remember(state, label, state.retryGeneration) { mutableStateOf(false) }
+    LaunchedEffect(state, label, state.retryGeneration) {
+        if (label == R.string.player_video_sync_unavailable) {
+            delay(3_000L)
+            expired = true
+        }
+    }
+    if (expired) return
     val canRetry = state.isVideoUnavailable || state.isVideoSyncUnavailable
     Text(
         text = stringResource(label),

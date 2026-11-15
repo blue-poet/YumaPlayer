@@ -42,7 +42,7 @@ import moe.rukamori.archivetune.ui.theme.yumaClickable
 import moe.rukamori.archivetune.ui.theme.yumaGlassCard
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 
-enum class PlayerMenuScreen { SETTINGS, CUSTOMIZATION, ARTWORK, SLEEP_TIMER, ABOUT, DETAILS, DOWNLOAD }
+enum class PlayerMenuScreen { SETTINGS, CUSTOMIZATION, ARTWORK, VIDEO_PICKER, SLEEP_TIMER, ABOUT, DETAILS, DOWNLOAD }
 
 private val OptionsMenuMaxWidth = 560.dp
 private val MenuDismissThreshold = 64.dp
@@ -118,6 +118,7 @@ fun FullPlayerOptionsMenu(
     if (expanded) {
         BackHandler {
             when {
+                currentScreen == PlayerMenuScreen.VIDEO_PICKER -> currentScreen = PlayerMenuScreen.ARTWORK
                 currentScreen == PlayerMenuScreen.DETAILS ||
                 currentScreen == PlayerMenuScreen.CUSTOMIZATION ||
                 currentScreen == PlayerMenuScreen.ARTWORK ||
@@ -281,8 +282,17 @@ fun FullPlayerOptionsMenu(
                                             Column(
                                                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                                             ) {
-                                                PlayerArtworkMenuContent()
+                                                PlayerArtworkMenuContent(
+                                                    onChooseVideo = { currentScreen = PlayerMenuScreen.VIDEO_PICKER },
+                                                    canChooseVideo = moe.rukamori.archivetune.ui.player.validMusicVideoChoice(state.trackUrl) != null,
+                                                )
                                             }
+                                        }
+                                        PlayerMenuScreen.VIDEO_PICKER -> key(state.trackUrl) {
+                                            MusicVideoPickerMenuContent(
+                                                state = state,
+                                                onPicked = requestDismiss,
+                                            )
                                         }
                                         PlayerMenuScreen.CUSTOMIZATION -> {
                                             Column(

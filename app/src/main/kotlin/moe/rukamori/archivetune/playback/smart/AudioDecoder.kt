@@ -303,7 +303,8 @@ object AudioDecoder {
     ): FloatArray? = decodeInternal(
         setDataSource = { it.setDataSource(source) },
         startMs = 0L,
-        endMs = MAX_HEAD_DECODE_MS,
+        endMs = 80_000L,
+        maxWindowMs = 80_000L,
         forAlignment = true,
         checkCancellation = checkCancellation,
     )

@@ -61,8 +61,10 @@ internal fun CanvasArtworkPlayer(
 
     LaunchedEffect(player, isMusicVideo, sharedController) {
         if (sharedController != null) return@LaunchedEffect
-        player.repeatMode = if (isMusicVideo) Player.REPEAT_MODE_OFF else Player.REPEAT_MODE_ONE
-        if (!isMusicVideo) player.setPlaybackSpeed(1f)
+        if (!isMusicVideo) {
+            player.repeatMode = Player.REPEAT_MODE_ONE
+            player.setPlaybackSpeed(1f)
+        }
     }
     if (isMusicVideo && sharedController == null) {
         SynchronizeMusicVideo(player, isPlaying, videoSyncOffsetMs)

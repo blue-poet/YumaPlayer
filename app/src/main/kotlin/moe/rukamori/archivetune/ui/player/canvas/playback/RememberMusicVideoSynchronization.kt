@@ -17,6 +17,9 @@ import moe.rukamori.archivetune.ui.main.LocalPlayerConnection
 
 @Composable
 internal fun SynchronizeMusicVideo(video: Player, isPlaying: Boolean, offsetMs: Long?) {
+    LaunchedEffect(video) {
+        video.repeatMode = Player.REPEAT_MODE_OFF
+    }
     val song = LocalPlayerConnection.current?.player ?: return
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lifecycleState by lifecycle.currentStateAsState()

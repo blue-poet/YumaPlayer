@@ -35,7 +35,7 @@ internal fun PlayerArtworkModeMenuRow(index: Int, count: Int, onClick: () -> Uni
 }
 
 @Composable
-internal fun PlayerArtworkMenuContent() {
+internal fun PlayerArtworkMenuContent(onChooseVideo: () -> Unit = {}, canChooseVideo: Boolean = false) {
     val (mode, setMode) = rememberPlayerArtworkMode()
     Column(Modifier.fillMaxWidth()) {
         Text(
@@ -60,6 +60,16 @@ internal fun PlayerArtworkMenuContent() {
                     role = Role.RadioButton
                 },
                 trailingContent = { RadioButton(selected = mode == choice, onClick = null) },
+            )
+        }
+        if (canChooseVideo) {
+            Spacer(Modifier.height(16.dp))
+            SettingsMenuRow(
+                title = stringResource(R.string.player_video_choose),
+                subtitle = stringResource(R.string.player_video_choose_description),
+                iconResId = R.drawable.search,
+                onClick = onChooseVideo,
+                showArrow = true,
             )
         }
     }

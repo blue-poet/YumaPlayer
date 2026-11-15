@@ -37,7 +37,7 @@ fun LyricsColumn(
     onSeekStarted: () -> Unit
 ) {
     val isReadyToParse by remember(animateProgressProvider) {
-        derivedStateOf { animateProgressProvider() > 0.99f }
+        derivedStateOf { animateProgressProvider() > 0.50f }
     }
 
     // state.isLyricsVisible is user intent and outlives the sheet closing, so gating

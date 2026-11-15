@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.media3.common.Player
 import moe.rukamori.archivetune.ui.player.canvas.playback.CanvasPlaybackController
 import moe.rukamori.archivetune.ui.player.canvas.playback.SynchronizeMusicVideo
 import moe.rukamori.archivetune.ui.player.canvas.playback.rememberCanvasPlaybackController
@@ -43,7 +42,6 @@ internal fun VideoSessionHost(
             if (controller.hasFailed) canvas.markVideoUnavailable()
         }
         controller.player?.let { player ->
-            LaunchedEffect(player) { player.repeatMode = Player.REPEAT_MODE_OFF }
             SynchronizeMusicVideo(player, isPlaying, canvas.videoSyncOffsetMs)
         }
     }
