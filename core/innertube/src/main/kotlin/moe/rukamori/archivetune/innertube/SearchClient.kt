@@ -53,9 +53,18 @@ object SearchClient : YouTubeSearchFacade {
             )
         }
 
-    override suspend fun searchSummary(query: String): Result<SearchSummaryPage> =
+    override suspend fun searchSummary(
+        query: String,
+        useAccountContext: Boolean,
+    ): Result<SearchSummaryPage> =
         runCatching {
-            val response = innerTube.search(WEB_REMIX, query).body<SearchResponse>()
+            val response =
+                innerTube
+                    .search(
+                        client = WEB_REMIX,
+                        query = query,
+                        useAccountContext = useAccountContext,
+                    ).body<SearchResponse>()
             val contents =
                 response.contents
                     ?.tabbedSearchResultsRenderer
@@ -103,7 +112,7 @@ object SearchClient : YouTubeSearchFacade {
                         topItems
                             .distinctBy { it.id }
                             .takeIf { it.isNotEmpty() }
-                            ?.let { add(SearchSummary(title = "Top results", items = it)) }
+                            ?.let { add(SearchSummary(title = "", items = it, isTopResults = true)) }
                         addAll(summaries)
                     },
             )
@@ -217,7 +226,7 @@ object SearchClient : YouTubeSearchFacade {
                 ?.runs
                 ?.joinToString(separator = "") { it.text }
                 ?.takeIf { it.isNotBlank() }
-                ?: "Other"
+                ?: ""
 
         return SearchSummary(title = title, items = items)
     }

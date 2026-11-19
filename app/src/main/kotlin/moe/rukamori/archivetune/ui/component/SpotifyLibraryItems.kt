@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -109,8 +110,9 @@ fun SpotifyLibraryPlaylistListItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                val trackCount = playlist.tracks?.total ?: 0
                 Text(
-                    text = "${playlist.tracks?.total ?: 0} ${stringResource(R.string.tracks_label)}",
+                    text = pluralStringResource(R.plurals.n_track, trackCount, trackCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -225,7 +227,7 @@ fun SpotifyLikedSongsListCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "$likedSongsTotal ${stringResource(R.string.tracks_label)}",
+                    text = pluralStringResource(R.plurals.n_track, likedSongsTotal, likedSongsTotal),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -271,7 +273,12 @@ fun SpotifyTrackListItem(
     track: SpotifyTrack,
     modifier: Modifier = Modifier,
     albumIndex: Int? = null,
+    isLiked: Boolean = false,
+    onToggleLike: (() -> Unit)? = null,
     badges: @Composable RowScope.() -> Unit = {
+        if (isLiked && onToggleLike == null) {
+            ItemFavoriteBadge()
+        }
         if (track.explicit) {
             Icon(
                 painter = painterResource(R.drawable.explicit),
@@ -313,7 +320,22 @@ fun SpotifyTrackListItem(
                 modifier = Modifier.size(ListThumbnailSize),
             )
         },
-        trailingContent = trailingContent,
+        trailingContent = {
+            if (onToggleLike != null) {
+                IconButton(
+                    onClick = onToggleLike,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+                        contentDescription = null,
+                        tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+            trailingContent()
+        },
         modifier = modifier,
         isActive = isActive,
     )
